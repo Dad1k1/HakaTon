@@ -1,0 +1,79 @@
+name: modus-feedback
+x-tools: &tools
+  image: modus-feedback-tools
+  build:
+    context: .
+    target: tools
+  environment: &tool-env
+    DATABASE_URL: postgresql://${POSTGRES_USER:-modus}:${POSTGRES_PASSWORD:?Run setup first}@db:5432/${POSTGRES_DB:-modus}
+    ADMIN_LOGIN: ${ADMIN_LOGIN:-admin}
+    ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-modus}
+      POSTGRES_DB: ${POSTGRES_DB:-modus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run setup first}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+  migrate:
+    <<: *tools
+    depends_on:
+      db:
+        condition: service_healthy
+    command: [npm, run, db:migrate]
+  app:
+    image: modus-feedback-app
+    build:
+      context: .
+      target: runtime
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-modus}:${POSTGRES_PASSWORD:?Run setup first}@db:5432/${POSTGRES_DB:-modus}
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?Run setup first}
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - '127.0.0.1:3000:3000'
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          'fetch("http://localhost:3000").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  initialize:
+    <<: *tools
+    profiles: [setup]
+    depends_on:
+      db:
+        condition: service_healthy
+    command: [npm, run, db:init]
+  demo:
+    <<: *tools
+    profiles: [setup]
+    depends_on:
+      db:
+        condition: service_healthy
+    command: [npm, run, db:demo]
+volumes:
+  db_data:
+  uploads:

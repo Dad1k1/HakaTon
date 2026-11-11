@@ -1,0 +1,78 @@
+name: Checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: modus
+          POSTGRES_PASSWORD: ci-isolated-database
+          POSTGRES_DB: modus_test
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U modus -d modus_test" --health-interval 3s --health-timeout 3s --health-retries 30
+    env:
+      DATABASE_URL: postgresql://modus:ci-isolated-database@localhost:5432/modus_test
+      NEXTAUTH_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: '1'
+      UPLOAD_DIR: .local/uploads
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Generate disposable test secrets
+        run: |
+          echo "NEXTAUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "ADMIN_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          echo "DEMO_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+      - run: npx prisma generate
+      - run: npm run db:migrate
+      - run: npm run db:demo
+      - run: npm run db:demo
+      - run: npx tsx scripts/test-fixtures.ts
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run build
+      - name: Start app
+        run: |
+          npm run start > /tmp/modus-app.log 2>&1 &
+          for i in $(seq 1 30); do curl --fail --silent http://localhost:3000 > /dev/null && exit 0; sleep 1; done
+          cat /tmp/modus-app.log
+          exit 1
+      - run: RUN_INTEGRATION=1 npm run test:integration
+      - run: npx tsx scripts/test-fixtures.ts
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure-report
+          path: |
+            playwright-report/
+            test-results/
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clean installation with demo data
+        run: ./setup.sh --demo
+      - name: Verify services and persistent data after restart
+        run: |
+          for i in $(seq 1 60); do curl --fail --silent http://localhost:3000 >/dev/null && break; sleep 2; done
+          curl --fail http://localhost:3000 >/dev/null
+          test "$(docker compose exec -T db psql -U modus -d modus -tAc 'SELECT COUNT(*) FROM "Appeal" WHERE number BETWEEN 1 AND 20')" = '20'
+          docker compose restart app db
+          for i in $(seq 1 60); do curl --fail --silent http://localhost:3000 >/dev/null && break; sleep 2; done
+          curl --fail http://localhost:3000 >/dev/null
+          test "$(docker compose exec -T db psql -U modus -d modus -tAc 'SELECT COUNT(*) FROM "Appeal" WHERE number BETWEEN 1 AND 20')" = '20'

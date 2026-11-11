@@ -1,0 +1,168 @@
+generator client {
+ provider = "prisma-client-js"
+ engineType = "client"
+}
+datasource db {
+ provider = "postgresql"
+}
+enum Role {
+ EMPLOYEE
+ RESPONSIBLE
+ MANAGER
+ ADMIN
+}
+enum Status {
+ NEW
+ REVIEW
+ IN_PROGRESS
+ WAITING
+ IMPLEMENTED
+ REJECTED
+ CLOSED
+}
+enum Priority {
+ LOW
+ MEDIUM
+ HIGH
+}
+enum AppealType {
+ PROBLEM
+ SUGGESTION
+ PRAISE
+}
+model Department {
+ id String @id @default(cuid())
+ name String @unique
+ users User[]
+ appeals Appeal[]
+ rules RoutingRule[]
+}
+model User {
+ id String @id @default(cuid())
+ login String @unique
+ name String
+ passwordHash String
+ role Role @default(EMPLOYEE)
+ departmentId String
+ department Department @relation(fields:[departmentId],references:[id])
+ blocked Boolean @default(false)
+ mustChangePassword Boolean @default(true)
+ sessionVersion Int @default(0)
+ locale String @default("ru")
+ theme String @default("light")
+ authored Appeal[] @relation("author")
+ assigned Appeal[] @relation("assignee")
+ comments Comment[]
+ history History[]
+ notifications Notification[]
+ routingRules RoutingRule[]
+ createdAt DateTime @default(now())
+}
+model Category {
+ id String @id @default(cuid())
+ code String @unique
+ ru String
+ kk String
+ en String
+ active Boolean @default(true)
+ appeals Appeal[]
+ rules RoutingRule[]
+}
+model RoutingRule {
+ id String @id @default(cuid())
+ categoryId String
+ category Category @relation(fields:[categoryId],references:[id])
+ departmentId String?
+ department Department? @relation(fields:[departmentId],references:[id])
+ assigneeId String
+ assignee User @relation(fields:[assigneeId],references:[id])
+ scope String @unique
+}
+model Appeal {
+ id String @id @default(cuid())
+ number Int @unique @default(autoincrement())
+ title String
+ description String
+ proposedSolution String?
+ recommendedNextStep String?
+ sourceAuthor String?
+ sourceAssignee String?
+ demo Boolean @default(false)
+ type AppealType
+ categoryId String
+ category Category @relation(fields:[categoryId],references:[id])
+ priority Priority @default(MEDIUM)
+ status Status @default(NEW)
+ authorId String
+ author User @relation("author",fields:[authorId],references:[id])
+ departmentId String
+ department Department @relation(fields:[departmentId],references:[id])
+ assigneeId String?
+ assignee User? @relation("assignee",fields:[assigneeId],references:[id])
+ dueAt DateTime
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ firstResponseAt DateTime?
+ completedAt DateTime?
+ result String?
+ demoResult Boolean @default(false)
+ version Int @default(1)
+ comments Comment[]
+ attachments Attachment[]
+ history History[]
+ notifications Notification[]
+ @@index([authorId,createdAt])
+ @@index([assigneeId,status])
+ @@index([departmentId,status])
+ @@index([status,dueAt])
+}
+model Comment {
+ id String @id @default(cuid())
+ appealId String
+ appeal Appeal @relation(fields:[appealId],references:[id])
+ authorId String
+ author User @relation(fields:[authorId],references:[id])
+ body String
+ createdAt DateTime @default(now())
+}
+model Attachment {
+ id String @id @default(cuid())
+ appealId String
+ appeal Appeal @relation(fields:[appealId],references:[id])
+ name String
+ storageKey String @unique
+ mime String
+ size Int
+ createdAt DateTime @default(now())
+}
+model History {
+ id String @id @default(cuid())
+ appealId String
+ appeal Appeal @relation(fields:[appealId],references:[id])
+ actorId String
+ actor User @relation(fields:[actorId],references:[id])
+ action String
+ changes Json
+ reason String?
+ createdAt DateTime @default(now())
+}
+model Notification {
+ id String @id @default(cuid())
+ userId String
+ user User @relation(fields:[userId],references:[id])
+ appealId String
+ appeal Appeal @relation(fields:[appealId],references:[id])
+ kind String
+ readAt DateTime?
+ createdAt DateTime @default(now())
+ @@index([userId,readAt])
+}
+model LoginAttempt {
+ key String @id
+ count Int @default(1)
+ expiresAt DateTime
+}
+model Setting {
+ key String @id
+ value Json
+}

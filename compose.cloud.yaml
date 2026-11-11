@@ -1,0 +1,17 @@
+# Optional build overlay for this managed Cloud environment; not needed on a local PC.
+services:
+  app:
+    build:
+      secrets: [proxy_ca]
+  migrate:
+    build:
+      secrets: [proxy_ca]
+  initialize:
+    build:
+      secrets: [proxy_ca]
+  demo:
+    build:
+      secrets: [proxy_ca]
+secrets:
+  proxy_ca:
+    file: ${CODEX_PROXY_CERT}
