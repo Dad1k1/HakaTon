@@ -1,10 +1,10 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { signOut } from 'next-auth/react';
 import { Plus, Shield, Users } from 'lucide-react';
 import { departmentName } from './context';
 import { Button } from './ui/button';
+import { signOutLocally } from '@/lib/session-client';
 import { useApp, useLoad, type User, type Category } from './context';
 export function PasswordForm() {
   const t = useTranslations();
@@ -16,7 +16,7 @@ export function PasswordForm() {
     try {
       const f = new FormData(e.currentTarget);
       await api('password', Object.fromEntries(f));
-      await signOut({ callbackUrl: '/' });
+      await signOutLocally();
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);

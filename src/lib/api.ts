@@ -31,18 +31,30 @@ class ApiError extends Error {
 /** Allow same-origin app access from localhost and RFC1918 IPv4 hosts on a LAN. */
 export function isAllowedLocalRequest(req: Request, requireOrigin = false) {
   try {
-    const url = new URL(req.url);
+    const rawHost = req.headers.get('host');
+    if (!rawHost) return false;
+    const forwardedProto = req.headers.get('x-forwarded-proto')?.split(',')[0].trim();
+    const requestProtocol = new URL(req.url).protocol;
+    const protocol =
+      forwardedProto === 'http' || forwardedProto === 'https'
+        ? forwardedProto
+        : requestProtocol.slice(0, -1);
+    if (protocol !== 'http' && protocol !== 'https') return false;
+    const url = new URL(protocol + '://' + rawHost);
+    if (url.host !== rawHost.toLowerCase()) return false;
     const host = url.hostname.toLowerCase();
     const localName = host === 'localhost' || host.endsWith('.localhost');
-    const privateIp = isIPv4(host) && (() => {
-      const octets = host.split('.').map(Number);
-      return (
-        octets[0] === 10 ||
-        octets[0] === 127 ||
-        (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
-        (octets[0] === 192 && octets[1] === 168)
-      );
-    })();
+    const privateIp =
+      isIPv4(host) &&
+      (() => {
+        const octets = host.split('.').map(Number);
+        return (
+          octets[0] === 10 ||
+          octets[0] === 127 ||
+          (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+          (octets[0] === 192 && octets[1] === 168)
+        );
+      })();
     if (!localName && !privateIp) return false;
 
     const origin = req.headers.get('origin');

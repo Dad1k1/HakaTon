@@ -19,7 +19,6 @@ POSTGRES_USER=modus
 POSTGRES_DB=modus
 POSTGRES_PASSWORD=$dbPassword
 DATABASE_URL=postgresql://modus:$dbPassword@localhost:5432/modus
-NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=$authSecret
 ADMIN_LOGIN=admin
 ADMIN_PASSWORD=$adminPassword

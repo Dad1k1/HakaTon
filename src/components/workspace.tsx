@@ -1,7 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { NextIntlClientProvider, useTranslations } from 'next-intl';
-import { signIn, signOut } from 'next-auth/react';
 import {
   ArrowRight,
   Bell,
@@ -35,6 +34,7 @@ import {
 } from './context';
 import { Overview, AppealList, AnalyticsScreen, NewAppeal, AppealDetail } from './appeals';
 import { SettingsScreen, PasswordForm } from './settings';
+import { signOutLocally } from '@/lib/session-client';
 const messages = { ru, kk, en };
 export function Workspace() {
   const [locale, setL] = useState<Locale>('ru'),
@@ -231,12 +231,23 @@ function Login({
     setError('');
     const f = new FormData(e.currentTarget);
     try {
-      const r = await signIn('credentials', {
-        login: f.get('login'),
-        password: f.get('password'),
-        redirect: false,
+      const csrfResponse = await fetch('/api/auth/csrf', { cache: 'no-store' });
+      if (!csrfResponse.ok) throw new Error('serverError');
+      const { csrfToken } = await csrfResponse.json();
+      const response = await fetch('/api/auth/callback/credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          csrfToken,
+          callbackUrl: window.location.href,
+          json: 'true',
+          login: String(f.get('login') || ''),
+          password: String(f.get('password') || ''),
+        }),
       });
-      if (r?.error) setError(t('errors.invalidLogin'));
+      const result = await response.json();
+      const destination = new URL(result.url || '/', window.location.origin);
+      if (!response.ok || destination.searchParams.has('error')) setError(t('errors.invalidLogin'));
       else await onLogin();
     } catch {
       setError(t('errors.serverError'));
@@ -395,7 +406,7 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
             <button
               title={t('signOut')}
               aria-label={t('signOut')}
-              onClick={() => signOut({ callbackUrl: '/' })}
+              onClick={() => void signOutLocally()}
             >
               <LogOut size={16} className="muted" />
             </button>
