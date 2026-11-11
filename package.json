@@ -13,6 +13,7 @@
     "test:e2e": "playwright test",
     "db:migrate": "prisma migrate deploy",
     "db:init": "tsx scripts/init.ts",
+    "db:reset-admin": "tsx scripts/reset-admin.ts",
     "db:demo": "tsx scripts/seed.ts",
     "db:import": "tsx scripts/import.ts",
     "format": "prettier --write .",

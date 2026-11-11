@@ -74,6 +74,13 @@ services:
       db:
         condition: service_healthy
     command: [npm, run, db:demo]
+  reset-admin:
+    <<: *tools
+    profiles: [setup]
+    depends_on:
+      db:
+        condition: service_healthy
+    command: [npm, run, db:reset-admin]
 volumes:
   db_data:
   uploads:
