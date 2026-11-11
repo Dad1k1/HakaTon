@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile, readFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { fileTypeFromBuffer } from 'file-type';
+import { isIPv4 } from 'node:net';
 import { db } from './db';
 import { authOptions } from './auth';
 import {
@@ -24,6 +25,31 @@ class ApiError extends Error {
     message: string,
   ) {
     super(message);
+  }
+}
+
+/** Allow same-origin app access from localhost and RFC1918 IPv4 hosts on a LAN. */
+export function isAllowedLocalRequest(req: Request, requireOrigin = false) {
+  try {
+    const url = new URL(req.url);
+    const host = url.hostname.toLowerCase();
+    const localName = host === 'localhost' || host.endsWith('.localhost');
+    const privateIp = isIPv4(host) && (() => {
+      const octets = host.split('.').map(Number);
+      return (
+        octets[0] === 10 ||
+        octets[0] === 127 ||
+        (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+        (octets[0] === 192 && octets[1] === 168)
+      );
+    })();
+    if (!localName && !privateIp) return false;
+
+    const origin = req.headers.get('origin');
+    if (!origin) return !requireOrigin;
+    return new URL(origin).origin === url.origin;
+  } catch {
+    return false;
   }
 }
 function fail(status: number, code: string): never {
@@ -734,12 +760,8 @@ async function limitedBody(req: Request, limit: number) {
 }
 export async function handle(req: Request, segments: string[]) {
   try {
+    if (!isAllowedLocalRequest(req, req.method !== 'GET')) fail(403, 'forbidden');
     const u = await currentUser();
-    if (req.method !== 'GET') {
-      const origin = req.headers.get('origin');
-      const expected = new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000').origin;
-      if (origin !== expected) fail(403, 'forbidden');
-    }
     if (u.mustChangePassword && !['me', 'password'].includes(segments[0]))
       fail(403, 'passwordChangeRequired');
     let result: unknown;
