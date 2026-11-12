@@ -186,7 +186,8 @@
     "fileSize": "Each file must be between 1 byte and 10 MB.",
     "fileType": "Unsupported file type or content.",
     "fileCount": "An appeal can have at most five attachments.",
-    "serverError": "Request failed. Please try again later."
+    "serverError": "Request failed. Please try again later.",
+    "telegramUnavailable": "Telegram is unavailable. Please try again later."
   },
   "awaitingResponse": "Awaiting response",
   "awaitingResponseHint": "No first substantive response",
@@ -278,5 +279,13 @@
   "uploadAvatar": "Upload avatar",
   "avatarHint": "PNG or JPEG, up to 5 MB",
   "removeAvatar": "Remove avatar",
-  "previewImage": "Preview image"
+  "previewImage": "Preview image",
+  "welcomeName": "Welcome, {name}",
+  "telegramConnected": "Notifications are connected. You can also send /stop to the bot.",
+  "telegramHint": "Receive new messages and appeal updates in a private chat with the bot.",
+  "telegramConnect": "Connect Telegram",
+  "telegramDisconnect": "Disconnect Telegram",
+  "telegramOpen": "Open bot",
+  "telegramStart": "Press Start in Telegram. This link expires in 10 minutes and can only be used once.",
+  "telegramDisabled": "The administrator needs to configure TELEGRAM_BOT_TOKEN on the server."
 }

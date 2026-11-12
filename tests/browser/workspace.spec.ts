@@ -6,7 +6,7 @@ async function login(page: Page, role = 'employee') {
   await page.getByLabel('Логин', { exact: true }).fill(c.users[role].login);
   await page.getByLabel('Пароль', { exact: true }).fill(c.password);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Всё начинается с диалога' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Добро пожаловать,/ })).toBeVisible();
   if (await page.getByRole('button', { name: 'Пропустить', exact: true }).isVisible())
     await page.getByRole('button', { name: 'Пропустить', exact: true }).click();
 }

@@ -23,7 +23,7 @@ import {
 import type { Status } from '@prisma/client';
 import { departmentName } from './context';
 import { Button } from './ui/button';
-import { useApp, useLoad, num, date, type Appeal, type Analytics, type History } from './context';
+import { useApp, useLoad, num, date, type Appeal, type Analytics } from './context';
 import { Avatar } from './ui/avatar';
 import { AttachmentGallery } from './attachment-gallery';
 import { terminal, transitions } from '@/lib/domain';
@@ -109,46 +109,6 @@ function Stat({
     </Tag>
   );
 }
-function Activity({ items }: { items: History[] }) {
-  const { locale, navigate } = useApp();
-  const t = useTranslations();
-  return (
-    <div className="panel activity-panel">
-      <div className="p-5 border-b flex gap-2 items-center">
-        <Clock size={16} className="muted" />
-        <h2 className="font-semibold text-sm">{t('recent')}</h2>
-      </div>
-      {!items.length ? (
-        <Empty />
-      ) : (
-        items.map((h, i) => (
-          <button
-            onClick={() => h.appeal && navigate({ view: 'appeals', id: h.appeal.id })}
-            key={h.id}
-            className="flex gap-3 p-5 border-b last:border-0 w-full text-left"
-          >
-            <div className="flex flex-col items-center">
-              <div className="w-7 h-7 surface rounded-full grid place-items-center">
-                <MessageSquare size={12} className="muted" />
-              </div>
-              {i < items.length - 1 && <div className="w-px flex-1 bg-border mt-1" />}
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium">{t(`events.${h.action}`)}</p>
-              <p className="text-xs muted mt-1 line-clamp-2">
-                {h.appeal && num(h.appeal.number) + ' · '}
-                {h.appeal?.title}
-              </p>
-              <p className="text-[10px] muted mt-2">
-                {h.actor.name} · {date(h.createdAt, locale, true)}
-              </p>
-            </div>
-          </button>
-        ))
-      )}
-    </div>
-  );
-}
 export function Overview({ onNew }: { onNew: () => void }) {
   const { user, navigate, locale } = useApp();
   const t = useTranslations();
@@ -156,8 +116,10 @@ export function Overview({ onNew }: { onNew: () => void }) {
   const { data: list } = useLoad<{ items: Appeal[] }>('appeals');
   return (
     <>
-      <p className="eyebrow mb-3">{t('product')}</p>
-      <PageHeading title={t('welcome')} description={t('overviewText')}>
+      <PageHeading
+        title={t('welcomeName', { name: user.name.split(' ')[0] })}
+        description={t('overviewText')}
+      >
         <Button onClick={onNew} data-tour="create">
           <Plus size={16} />
           {t('newAppeal')}
@@ -202,7 +164,7 @@ export function Overview({ onNew }: { onNew: () => void }) {
         />
       </div>
       <OverviewCharts analytics={a} />
-      <div className="grid xl:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start overview-columns">
+      <div className="grid gap-6 overview-columns">
         <section className="panel min-w-0 overflow-hidden" data-testid="latest-appeals">
           <div className="p-5 border-b flex justify-between items-center gap-3">
             <h2 className="font-semibold">{t('latest')}</h2>
@@ -242,7 +204,6 @@ export function Overview({ onNew }: { onNew: () => void }) {
             </div>
           )}
         </section>
-        <Activity items={a?.recent ?? []} />
       </div>
     </>
   );
@@ -932,33 +893,63 @@ export function AppealDetail({ id }: { id: string }) {
         {t('appeals')}
       </Button>
       <section className="panel appeal-summary p-6 md:p-8 mb-6">
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <span className="muted text-xs">{num(a.number)}</span>
-          <Badge value={a.status} />
-          <Badge value={a.type} kind="types" />
-        </div>
-        <h1 className="text-2xl font-semibold leading-relaxed tracking-tight mb-4">{a.title}</h1>
-        <div className="flex gap-3 items-center mb-6 text-xs muted">
-          <Avatar person={a.author} />
-          <span>
-            {t('author')}: {a.author.name} · {date(a.createdAt, locale, true)}
-          </span>
-        </div>
-        <p className="text-content text-sm">{a.description}</p>
-        {a.proposedSolution && (
-          <div className="mt-6 pt-5 border-t">
-            <h2 className="font-semibold mb-3">{t('proposedSolution')}</h2>
-            <p className="text-content text-sm">{a.proposedSolution}</p>
+        <div className="appeal-summary-copy">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <span className="muted text-xs">{num(a.number)}</span>
+            <Badge value={a.status} />
+            <Badge value={a.type} kind="types" />
           </div>
-        )}
-        {a.recommendedNextStep && (
-          <div className="surface rounded-2xl p-4 mt-5">
-            <h2 className="text-xs font-medium mb-2">{t('recommended')}</h2>
-            <p className="text-xs text-content muted">{a.recommendedNextStep}</p>
+          <h1 className="text-2xl font-semibold leading-relaxed tracking-tight mb-4">{a.title}</h1>
+          <div className="flex gap-3 items-center mb-6 text-xs muted">
+            <Avatar person={a.author} />
+            <span>
+              {t('author')}: {a.author.name} · {date(a.createdAt, locale, true)}
+            </span>
           </div>
-        )}
+          <p className="text-content text-sm">{a.description}</p>
+          {a.proposedSolution && (
+            <div className="mt-6 pt-5 border-t">
+              <h2 className="font-semibold mb-3">{t('proposedSolution')}</h2>
+              <p className="text-content text-sm">{a.proposedSolution}</p>
+            </div>
+          )}
+          {a.recommendedNextStep && (
+            <div className="surface rounded-2xl p-4 mt-5">
+              <h2 className="text-xs font-medium mb-2">{t('recommended')}</h2>
+              <p className="text-xs text-content muted">{a.recommendedNextStep}</p>
+            </div>
+          )}
+        </div>
+        <aside className="appeal-facts">
+          <dl className="space-y-5">
+            {field(t('department'), departmentName(a.department.name, locale))}
+            {field(t('assignee'), a.assignee?.name || t('unassigned'))}
+            {field(t('category'), a.category[locale])}
+            {field(t('priority'), <Badge value={a.priority} kind="priorities" />)}
+            {field(
+              t('dueAt'),
+              <span
+                className={
+                  new Date(a.dueAt) < new Date() && !terminal.includes(a.status)
+                    ? 'text-red-600'
+                    : ''
+                }
+              >
+                {date(a.dueAt, locale, true)}
+                {new Date(a.dueAt) < new Date() &&
+                  !terminal.includes(a.status) &&
+                  ' · ' + t('overdue')}
+              </span>,
+            )}
+          </dl>
+          {a.demo && (
+            <p className="surface p-3 rounded-md muted text-[10px] leading-5 mt-6">
+              {t('demoNotice')}
+            </p>
+          )}
+        </aside>
       </section>
-      <div className="grid xl:grid-cols-[minmax(0,1fr)_310px] gap-6 items-start">
+      <div className="grid gap-6">
         <div className="min-w-0 space-y-6">
           {a.result && (
             <section className="panel p-6 border-l-4 border-l-blue-600">
@@ -1172,36 +1163,6 @@ export function AppealDetail({ id }: { id: string }) {
             </p>
           )}
         </div>
-        <aside className="panel p-6 h-fit">
-          <h2 className="font-semibold border-b pb-4 mb-5">{num(a.number)}</h2>
-          <dl className="space-y-5">
-            {field(t('department'), departmentName(a.department.name, locale))}
-            {field(t('assignee'), a.assignee?.name || t('unassigned'))}
-            {field(t('category'), a.category[locale])}
-            {field(t('priority'), <Badge value={a.priority} kind="priorities" />)}
-            {field(
-              t('dueAt'),
-              <span
-                className={
-                  new Date(a.dueAt) < new Date() && !terminal.includes(a.status)
-                    ? 'text-red-600'
-                    : ''
-                }
-              >
-                {date(a.dueAt, locale, true)}
-                {new Date(a.dueAt) < new Date() &&
-                  !terminal.includes(a.status) &&
-                  ' · ' + t('overdue')}
-              </span>,
-            )}
-            {field(t('createdAt'), date(a.createdAt, locale, true))}
-          </dl>
-          {a.demo && (
-            <p className="surface p-3 rounded-md muted text-[10px] leading-5 mt-6">
-              {t('demoNotice')}
-            </p>
-          )}
-        </aside>
       </div>
       {manageable && (
         <details className="panel manage-disclosure mt-6">

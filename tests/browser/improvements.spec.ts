@@ -96,7 +96,7 @@ test('new request popup and guide dismissal persist', async ({ page }) => {
   await page.getByLabel('Больше не показывать', { exact: true }).check();
   await page.getByRole('button', { name: 'Пропустить', exact: true }).click();
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Всё начинается с диалога' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Добро пожаловать,/ })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   const title = 'Popup request ' + Date.now();
   await data(author, 'appeals', {

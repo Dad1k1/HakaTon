@@ -58,6 +58,7 @@ model User {
  comments Comment[]
  history History[]
  notifications Notification[]
+ telegram TelegramConnection?
  routingRules RoutingRule[]
  createdAt DateTime @default(now())
 }
@@ -158,6 +159,9 @@ model Notification {
  appealId String
  appeal Appeal @relation(fields:[appealId],references:[id])
  kind String
+ telegramSentAt DateTime?
+ telegramRetryAt DateTime?
+ telegramAttempts Int @default(0)
  readAt DateTime?
  deliverAt DateTime @default(now())
  createdAt DateTime @default(now())
@@ -172,4 +176,14 @@ model LoginAttempt {
 model Setting {
  key String @id
  value Json
+}
+
+model TelegramConnection {
+ id String @id @default(cuid())
+ userId String @unique
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ chatId String? @unique
+ tokenHash String? @unique
+ expiresAt DateTime?
+ connectedAt DateTime?
 }

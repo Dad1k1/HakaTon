@@ -36,6 +36,7 @@ import { GuidedTour } from './guided-tour';
 import { NotificationCenter } from './notifications';
 import { SettingsScreen, PasswordForm } from './settings';
 import { signOutLocally } from '@/lib/session-client';
+import { BrandLogo } from './ui/brand-logo';
 import { Avatar } from './ui/avatar';
 import { MotionPills } from './ui/motion-pills';
 const messages = { ru, kk, en };
@@ -272,11 +273,7 @@ function Login({
     <div className="login-grid">
       <aside className="login-info">
         <div className="flex items-center gap-3">
-          <span className="logo">М</span>
-          <div>
-            <strong>{t('brand')}</strong>
-            <p className="text-xs muted mt-1">{t('product')}</p>
-          </div>
+          <BrandLogo />
         </div>
         <div className="max-w-md">
           <span className="eyebrow">{t('workspace')}</span>
@@ -299,7 +296,9 @@ function Login({
         </div>
         <div className="flex-1 flex items-center justify-center p-7">
           <div className="w-full max-w-sm">
-            <div className="logo mb-7 md:hidden">М</div>
+            <div className="mb-7 md:hidden">
+              <BrandLogo />
+            </div>
             <p className="eyebrow mb-3">{t('brand')}</p>
             <h2 className="text-2xl font-semibold tracking-tight">{t('signIn')}</h2>
             <p className="muted mt-2 text-sm">{t('product')}</p>
@@ -401,11 +400,7 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
         className={`sidebar flex flex-col ${menu ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}
       >
         <div className="p-6 flex items-center gap-3">
-          <span className="logo">М</span>
-          <div>
-            <div className="font-bold tracking-tight">{t('brand')}</div>
-            <div className="text-[10px] muted mt-1">{t('product')}</div>
-          </div>
+          <BrandLogo />
         </div>
         <div className="px-6 pt-7 pb-3 eyebrow">{t('workspace')}</div>
         <nav className="px-3 space-y-1 motion-track">

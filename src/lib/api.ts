@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileTypeFromBuffer } from 'file-type';
 import { isIPv4 } from 'node:net';
 import { db } from './db';
+import { createTelegramLink } from './telegram';
 import { authOptions } from './auth';
 import {
   visibility,
@@ -205,6 +206,10 @@ function publicUser(u: User) {
 }
 async function get(u: User, p: string[], q: URLSearchParams) {
   if (p[0] === 'me') return publicUser(u);
+  if (p[0] === 'telegram') {
+    const connection = await db.telegramConnection.findUnique({ where: { userId: u.id } });
+    return { enabled: !!process.env.TELEGRAM_BOT_TOKEN, connected: !!connection?.chatId };
+  }
   if (p[0] === 'lookups')
     return {
       categories: await db.category.findMany({ where: { active: true }, orderBy: { code: 'asc' } }),
@@ -362,6 +367,21 @@ async function get(u: User, p: string[], q: URLSearchParams) {
   fail(404, 'notFound');
 }
 async function post(u: User, p: string[], body: unknown) {
+  if (p[0] === 'telegram') {
+    const b = z
+      .object({ action: z.enum(['connect', 'disconnect']) })
+      .strict()
+      .parse(body);
+    if (b.action === 'disconnect') {
+      await db.telegramConnection.deleteMany({ where: { userId: u.id } });
+      return { ok: true };
+    }
+    try {
+      return await createTelegramLink(u.id);
+    } catch {
+      fail(503, 'telegramUnavailable');
+    }
+  }
   if (p[0] === 'profile') {
     const b = z
       .object({

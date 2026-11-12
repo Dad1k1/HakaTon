@@ -186,7 +186,8 @@
     "fileSize": "Файл 1 байттан 10 МБ-қа дейін болуы тиіс.",
     "fileType": "Файл пішімі немесе мазмұны қолдау таппайды.",
     "fileCount": "Әр өтінішке бес тіркемеден артық рұқсат етілмейді.",
-    "serverError": "Сұрауды орындау мүмкін болмады. Кейін қайталаңыз."
+    "serverError": "Сұрауды орындау мүмкін болмады. Кейін қайталаңыз.",
+    "telegramUnavailable": "Telegram қолжетімсіз. Кейінірек қайталаңыз."
   },
   "awaitingResponse": "Жауап күтуде",
   "awaitingResponseHint": "Алғашқы мазмұнды жауапсыз",
@@ -278,5 +279,13 @@
   "uploadAvatar": "Аватар жүктеу",
   "avatarHint": "PNG немесе JPEG, 5 МБ дейін",
   "removeAvatar": "Аватарды жою",
-  "previewImage": "Суретті ашу"
+  "previewImage": "Суретті ашу",
+  "welcomeName": "Қош келдіңіз, {name}",
+  "telegramConnected": "Хабарландырулар қосылды. Ботқа /stop жіберіп те өшіруге болады.",
+  "telegramHint": "Жаңа хабарлар мен өтініш өзгерістерін ботпен жеке чатта алыңыз.",
+  "telegramConnect": "Telegram қосу",
+  "telegramDisconnect": "Telegram өшіру",
+  "telegramOpen": "Ботты ашу",
+  "telegramStart": "Telegram ішінде «Бастау» басыңыз. Сілтеме 10 минут жарамды және бір рет қолданылады.",
+  "telegramDisabled": "Әкімші серверде TELEGRAM_BOT_TOKEN орнатуы керек."
 }

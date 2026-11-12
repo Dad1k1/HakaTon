@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { TelegramSettings } from './telegram-settings';
 import { AvatarUpload } from './avatar-upload';
 import { Avatar } from './ui/avatar';
 import { Plus, Shield, Users } from './ui/icons';
@@ -139,6 +140,7 @@ export function SettingsScreen() {
               </select>
             </div>
           </div>
+          <TelegramSettings />
         </section>
         <section hidden={section !== 'changePassword'} className="panel p-6">
           <h2 className="font-semibold mb-5">{t('changePassword')}</h2>
