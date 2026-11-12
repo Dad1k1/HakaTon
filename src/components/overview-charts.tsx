@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowUpRight, ChartNoAxesCombined } from 'lucide-react';
+import { ArrowUpRight, ChartNoAxesCombined } from './ui/icons';
 import { type Analytics, useApp } from './context';
 import { Button } from './ui/button';
 

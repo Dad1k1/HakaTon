@@ -272,5 +272,7 @@
       "title": "You’re ready!",
       "text": "This button sends a completed appeal. During the tour, clicking it only finishes the guide. After the tour, complete the form and submit when ready."
     }
-  }
+  },
+  "collapseSidebar": "Collapse sidebar",
+  "expandSidebar": "Expand sidebar"
 }

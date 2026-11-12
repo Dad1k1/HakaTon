@@ -1128,3 +1128,315 @@ button.stat-card:hover {
     scroll-behavior: auto !important;
   }
 }
+
+/* Graphite: original quiet surfaces and a shared motion rhythm. */
+:root {
+  --primary: 0 0% 12%;
+  --background: 0 0% 100%;
+  --foreground: 0 0% 12%;
+  --border: 0 0% 88%;
+  --soft-hover: #efefed;
+}
+.dark {
+  --primary: 0 0% 94%;
+  --background: 0 0% 8%;
+  --foreground: 0 0% 94%;
+  --border: 0 0% 15%;
+  --soft-hover: #252525;
+}
+body {
+  letter-spacing: -0.012em;
+}
+.surface {
+  background: #f5f5f2;
+}
+.dark .surface {
+  background: #090909;
+}
+.sidebar,
+.dark .sidebar {
+  background: #fafaf8;
+  color: #252525;
+  border-color: #e4e4df;
+  box-shadow: none;
+  transition:
+    width 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 300ms;
+}
+.dark .sidebar {
+  background: #101010;
+  color: #ededed;
+  border-color: #242424;
+}
+.sidebar .muted,
+.sidebar .eyebrow,
+.sidebar .navitem,
+.sidebar-help {
+  color: #696966;
+}
+.dark .sidebar .muted,
+.dark .sidebar .eyebrow,
+.dark .sidebar .navitem,
+.dark .sidebar-help {
+  color: #a5a5a1;
+}
+.sidebar .surface {
+  background: #e9e9e4;
+}
+.dark .sidebar .surface {
+  background: #292929;
+}
+.sidebar .navitem:hover,
+.dark .sidebar .navitem:hover,
+.sidebar-help:hover {
+  background: #88888810;
+  color: inherit;
+  transform: none;
+}
+.logo {
+  background: #252525;
+  border-radius: 50%;
+}
+.dark .logo {
+  background: #ededed;
+  color: #141414;
+}
+.primary-action {
+  background: #242424;
+  color: #fff;
+}
+.dark .primary-action {
+  background: #eee;
+  color: #151515;
+}
+.panel {
+  border-radius: 22px;
+  border-color: #e8e8e3;
+}
+.dark .panel {
+  border-color: #222;
+}
+input,
+select,
+textarea {
+  border-radius: 14px;
+  background: #f4f4f1;
+  border-color: transparent;
+  transition:
+    box-shadow 180ms,
+    background 180ms;
+}
+.dark input,
+.dark select,
+.dark textarea {
+  background: #242424;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  box-shadow: 0 0 0 3px #8882;
+}
+.page-title {
+  font-weight: 580;
+  letter-spacing: -0.045em;
+  font-size: clamp(26px, 2.5vw, 34px);
+}
+.main {
+  transition: margin-left 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.motion-track,
+.segmented {
+  position: relative;
+  isolation: isolate;
+}
+.moving-pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 999px;
+  background: #252525;
+  transition:
+    transform 420ms cubic-bezier(0.22, 1.16, 0.36, 1),
+    width 420ms cubic-bezier(0.22, 1.16, 0.36, 1),
+    height 300ms,
+    opacity 180ms;
+}
+.dark .moving-pill {
+  background: #efefed;
+}
+.sidebar .navitem.selected,
+.dark .sidebar .navitem.selected,
+.segmented button[aria-pressed='true'],
+.motion-track button[aria-pressed='true'],
+.motion-track button[aria-selected='true'] {
+  background: transparent;
+  box-shadow: none;
+  color: #fff;
+  border-color: transparent;
+}
+.dark .sidebar .navitem.selected,
+.dark .segmented button[aria-pressed='true'],
+.dark .motion-track button[aria-pressed='true'],
+.dark .motion-track button[aria-selected='true'] {
+  color: #121212;
+}
+.motion-track button {
+  border-radius: 999px;
+}
+.segmented {
+  border-radius: 999px;
+}
+.settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.settings-layout > section {
+  padding: 32px;
+}
+.settings-summary {
+  padding: 32px;
+  overflow-wrap: anywhere;
+}
+.profile-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 26px;
+  display: grid;
+  place-items: center;
+  background: var(--soft-hover);
+  font-size: 30px;
+  margin-bottom: 24px;
+}
+.settings-tabs {
+  width: fit-content;
+  padding: 5px;
+  background: var(--soft-hover);
+  border-radius: 24px;
+}
+.settings-tabs button {
+  border: 0;
+  background: transparent;
+}
+.profile-panel form {
+  display: grid;
+  gap: 24px;
+}
+.profile-panel form > button {
+  justify-self: start;
+}
+.dialog {
+  border-radius: 26px;
+  animation: sheet-in 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  overscroll-behavior: contain;
+}
+.notification-center {
+  border-radius: 24px;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #8886 transparent;
+}
+html {
+  scrollbar-gutter: stable;
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.page-enter {
+  animation: enter-panel 280ms ease-out;
+}
+.panel {
+  animation: enter-panel 300ms ease-out both;
+}
+@media (min-width: 768px) {
+  .sidebar.collapsed {
+    width: 76px;
+  }
+  .sidebar.collapsed > div:first-child {
+    padding: 24px 20px;
+  }
+  .sidebar.collapsed > div:first-child > div,
+  .sidebar.collapsed .eyebrow,
+  .sidebar.collapsed .nav-label,
+  .sidebar.collapsed .sidebar-help,
+  .sidebar.collapsed .mt-auto {
+    display: none;
+  }
+  .sidebar.collapsed nav {
+    margin-top: 28px;
+  }
+  .sidebar.collapsed .navitem {
+    justify-content: center;
+    padding: 13px 0;
+  }
+  .main.expanded {
+    margin-left: 76px;
+  }
+}
+@media (max-width: 767px) {
+  .desktop-collapse {
+    display: none;
+  }
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+  .settings-layout > section,
+  .settings-summary {
+    padding: 24px;
+  }
+  .overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .dialog {
+    border-radius: 26px 26px 0 0;
+    max-height: 94dvh;
+  }
+  .settings-tabs {
+    gap: 0;
+    max-width: 100%;
+  }
+  .settings-tabs button {
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+.skeleton {
+  display: block;
+  background: linear-gradient(100deg, var(--soft-hover) 25%, #8882 45%, var(--soft-hover) 65%);
+  background-size: 240% 100%;
+  animation: skeleton-sweep 1.8s ease-in-out infinite;
+}
+@keyframes skeleton-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

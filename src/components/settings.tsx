@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Plus, Shield, Users } from 'lucide-react';
+import { Plus, Shield, Users } from './ui/icons';
 import { departmentName } from './context';
 import { Button } from './ui/button';
 import { signOutLocally } from '@/lib/session-client';
@@ -70,11 +70,12 @@ export function SettingsScreen() {
   return (
     <>
       <h1 className="page-title mb-7">{t('settings')}</h1>
-      <div className="flex gap-2 flex-wrap mb-6">
+      <div className="motion-track settings-tabs flex gap-2 flex-wrap mb-6">
         {['profile', 'changePassword', ...(user.role === 'ADMIN' ? ['administration'] : [])].map(
           (key) => (
             <Button
               key={key}
+              aria-pressed={section === key}
               variant={section === key ? 'default' : 'outline'}
               onClick={() => setSection(key)}
             >
@@ -83,8 +84,8 @@ export function SettingsScreen() {
           ),
         )}
       </div>
-      <div className="max-w-3xl">
-        <section hidden={section !== 'profile'} className="panel p-6">
+      <div className="settings-layout">
+        <section hidden={section !== 'profile'} className="panel p-6 profile-panel">
           <h2 className="font-semibold mb-5">{t('profile')}</h2>
           <form onSubmit={profile} className="space-y-4">
             <div>
@@ -140,6 +141,25 @@ export function SettingsScreen() {
           <h2 className="font-semibold mb-5">{t('changePassword')}</h2>
           <PasswordForm />
         </section>
+        <aside className="panel settings-summary" hidden={section === 'administration'}>
+          <div className="profile-avatar">{user.name.slice(0, 1)}</div>
+          <h2 className="text-xl font-semibold">{user.name}</h2>
+          <p className="muted mt-2">{t(`roles.${user.role}`)}</p>
+          <dl className="space-y-5 mt-8">
+            <div>
+              <dt className="eyebrow">{t('department')}</dt>
+              <dd className="mt-2">{departmentName(user.department?.name || '—', locale)}</dd>
+            </div>
+            <div>
+              <dt className="eyebrow">{t('login')}</dt>
+              <dd className="mt-2">{user.login}</dd>
+            </div>
+          </dl>
+          <div className="surface rounded-2xl p-5 mt-8">
+            <Shield size={23} />
+            <p className="text-xs muted leading-6 mt-3">{t('passwordHint')}</p>
+          </div>
+        </aside>
       </div>
       {user.role === 'ADMIN' && (
         <div hidden={section !== 'administration'}>
@@ -208,7 +228,7 @@ function Admin() {
         <Shield size={20} />
         {t('administration')}
       </h2>
-      <div className="flex gap-2 flex-wrap mb-6" role="tablist">
+      <div className="motion-track settings-tabs flex gap-2 flex-wrap mb-6" role="tablist">
         {['users', 'directory', 'routing', 'sla'].map((k) => (
           <Button
             key={k}

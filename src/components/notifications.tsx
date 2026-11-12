@@ -10,7 +10,7 @@ import {
   FileText,
   MessageSquare,
   X,
-} from 'lucide-react';
+} from './ui/icons';
 import { Button } from './ui/button';
 import { date, num, type Notification, useApp } from './context';
 

@@ -17,7 +17,7 @@ import {
   Search,
   SlidersHorizontal,
   X,
-} from 'lucide-react';
+} from './ui/icons';
 import type { Status } from '@prisma/client';
 import { departmentName } from './context';
 import { Button } from './ui/button';
@@ -55,9 +55,17 @@ function PageHeading({
 function Loading() {
   const t = useTranslations();
   return (
-    <p className="p-8 muted" role="status">
-      {t('loading')}
-    </p>
+    <div className="loading-skeleton p-6 space-y-5" role="status" aria-label={t('loading')}>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex gap-4">
+          <span className="skeleton w-10 h-10 rounded-xl" />
+          <div className="flex-1 space-y-3">
+            <div className="skeleton h-4 w-3/4 rounded-full" />
+            <div className="skeleton h-3 w-1/2 rounded-full" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 function Empty() {

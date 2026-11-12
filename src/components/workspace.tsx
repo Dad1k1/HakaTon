@@ -18,7 +18,7 @@ import {
   X,
   CircleHelp,
   CheckCircle2,
-} from 'lucide-react';
+} from './ui/icons';
 import ru from '@/messages/ru.json';
 import kk from '@/messages/kk.json';
 import en from '@/messages/en.json';
@@ -36,6 +36,7 @@ import { GuidedTour } from './guided-tour';
 import { NotificationCenter } from './notifications';
 import { SettingsScreen, PasswordForm } from './settings';
 import { signOutLocally } from '@/lib/session-client';
+import { MotionPills } from './ui/motion-pills';
 const messages = { ru, kk, en };
 export function Workspace() {
   const [locale, setL] = useState<Locale>('ru'),
@@ -342,6 +343,10 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
   const t = useTranslations();
   const { user, locale, theme, setLocale, setTheme, query, navigate, api, revision, refresh } =
     useApp();
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    setCollapsed(localStorage.getItem('sidebar-collapsed') === '1');
+  }, []);
   const view = query.get('view') || 'overview';
   const [menu, setMenu] = useState(false),
     [newOpen, setNewOpen] = useState(false),
@@ -391,7 +396,9 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           onClick={() => setMenu(false)}
         />
       )}
-      <aside className={`sidebar flex flex-col ${menu ? 'open' : ''}`}>
+      <aside
+        className={`sidebar flex flex-col ${menu ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}
+      >
         <div className="p-6 flex items-center gap-3">
           <span className="logo">М</span>
           <div>
@@ -400,10 +407,12 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           </div>
         </div>
         <div className="px-6 pt-7 pb-3 eyebrow">{t('workspace')}</div>
-        <nav className="px-3 space-y-1">
+        <nav className="px-3 space-y-1 motion-track">
           {nav.map(([key, Icon]) => (
             <button
               key={key}
+              title={t(key)}
+              aria-label={t(key)}
               data-tour={`nav-${key}`}
               className={`navitem ${view === key ? 'selected' : ''}`}
               aria-current={view === key ? 'page' : undefined}
@@ -413,7 +422,7 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
               }}
             >
               <Icon size={18} />
-              {t(key)}
+              <span className="nav-label">{t(key)}</span>
             </button>
           ))}
         </nav>
@@ -448,7 +457,8 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           </div>
         </div>
       </aside>
-      <div className="main min-h-screen surface">
+      <MotionPills />
+      <div className={`main min-h-screen surface ${collapsed ? 'expanded' : ''}`}>
         <header className="h-[72px] bg-background border-b flex items-center justify-between px-4 md:px-10">
           <div className="flex gap-3 items-center">
             <Button
@@ -459,6 +469,19 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
               onClick={() => setMenu(!menu)}
             >
               <Menu size={20} />
+            </Button>
+            <Button
+              className="desktop-collapse"
+              variant="ghost"
+              size="icon"
+              aria-label={t(collapsed ? 'expandSidebar' : 'collapseSidebar')}
+              aria-expanded={!collapsed}
+              onClick={() => {
+                setCollapsed(!collapsed);
+                localStorage.setItem('sidebar-collapsed', collapsed ? '0' : '1');
+              }}
+            >
+              <Menu size={19} />
             </Button>
             <span className="header-crumb muted text-xs">{t('workspace')}</span>
             <ChevronRight size={13} className="muted header-crumb" />
@@ -485,7 +508,7 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
             )}
           </div>
         </header>
-        <main id="main" className="content">
+        <main id="main" className="content page-enter" key={`${view}:${query.get('id') || ''}`}>
           {(error || success) && (
             <div
               className={`${error ? 'error' : 'success'} mb-6 flex justify-between gap-3`}
