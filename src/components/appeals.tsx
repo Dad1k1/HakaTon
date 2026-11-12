@@ -23,6 +23,7 @@ import { departmentName } from './context';
 import { Button } from './ui/button';
 import { useApp, useLoad, num, date, type Appeal, type Analytics, type History } from './context';
 import { terminal, transitions } from '@/lib/domain';
+import { OverviewCharts } from './overview-charts';
 export function Badge({ value, kind = 'statuses' }: { value: string; kind?: string }) {
   const t = useTranslations();
   return (
@@ -75,21 +76,23 @@ function Stat({
   icon: Icon,
   note,
   onClick,
+  tone = 'default',
 }: {
   label: string;
   value: React.ReactNode;
   icon: typeof Inbox;
   note?: string;
   onClick?: () => void;
+  tone?: 'default' | 'alert' | 'success';
 }) {
   const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag className="panel p-5 md:p-6 text-left" onClick={onClick}>
+    <Tag className={`panel stat-card p-5 md:p-6 text-left stat-${tone}`} onClick={onClick}>
       <div className="flex justify-between items-center gap-3">
         <span className="muted text-xs">{label}</span>
         <Icon size={17} className="muted" />
       </div>
-      <p className="text-[30px] font-semibold tracking-tight mt-5">{value}</p>
+      <p className="stat-value text-[30px] font-semibold tracking-tight mt-4">{value}</p>
       {note && <p className="text-[10px] muted mt-2">{note}</p>}
     </Tag>
   );
@@ -98,7 +101,7 @@ function Activity({ items }: { items: History[] }) {
   const { locale, navigate } = useApp();
   const t = useTranslations();
   return (
-    <div className="panel">
+    <div className="panel activity-panel">
       <div className="p-5 border-b flex gap-2 items-center">
         <Clock size={16} className="muted" />
         <h2 className="font-semibold text-sm">{t('recent')}</h2>
@@ -143,7 +146,7 @@ export function Overview({ onNew }: { onNew: () => void }) {
     <>
       <p className="eyebrow mb-3">{t('product')}</p>
       <PageHeading title={t('welcome')} description={t('overviewText')}>
-        <Button onClick={onNew}>
+        <Button onClick={onNew} data-tour="create">
           <Plus size={16} />
           {t('newAppeal')}
         </Button>
@@ -165,6 +168,7 @@ export function Overview({ onNew }: { onNew: () => void }) {
         />
         <Stat
           label={t('overdue')}
+          tone="alert"
           value={a?.overdue ?? '—'}
           icon={ArrowUpRight}
           note={t('onlyOverdue')}
@@ -172,6 +176,7 @@ export function Overview({ onNew }: { onNew: () => void }) {
         />
         <Stat
           label={t(user.role === 'ADMIN' ? 'unassigned' : 'implemented')}
+          tone={user.role === 'ADMIN' ? 'default' : 'success'}
           value={a ? (user.role === 'ADMIN' ? a.unassigned : a.implemented) : '—'}
           icon={user.role === 'ADMIN' ? Inbox : CheckCircle2}
           note={t(user.role === 'ADMIN' ? 'assignee' : 'results')}
@@ -184,8 +189,9 @@ export function Overview({ onNew }: { onNew: () => void }) {
           }
         />
       </div>
-      <div className="grid xl:grid-cols-[minmax(0,1fr)_320px] gap-6">
-        <section className="panel min-w-0">
+      <OverviewCharts analytics={a} />
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start overview-columns">
+        <section className="panel min-w-0 overflow-hidden" data-testid="latest-appeals">
           <div className="p-5 border-b flex justify-between items-center gap-3">
             <h2 className="font-semibold">{t('latest')}</h2>
             <Button variant="ghost" size="sm" onClick={() => navigate({ view: 'appeals' })}>
@@ -202,7 +208,7 @@ export function Overview({ onNew }: { onNew: () => void }) {
               {list.items.slice(0, 5).map((a) => (
                 <button
                   onClick={() => navigate({ view: 'appeals', id: a.id })}
-                  className="p-5 w-full text-left flex gap-4 items-start hover:bg-blue-50/30"
+                  className="appeal-row p-5 w-full text-left flex gap-4 items-start"
                   key={a.id}
                 >
                   <div className="w-9 h-9 surface rounded-md grid place-items-center text-blue-600">
@@ -404,7 +410,7 @@ export function AppealList({ results, onNew }: { results: boolean; onNew: () => 
         description={t(results ? 'resultsText' : 'available')}
       >
         {!results && (
-          <Button onClick={onNew}>
+          <Button onClick={onNew} data-tour="create">
             <Plus size={16} />
             {t('newAppeal')}
           </Button>
@@ -604,8 +610,13 @@ export function AnalyticsScreen() {
               }
               icon={CheckCircle2}
             />
-            <Stat label={t('implemented')} value={a.implemented} icon={ArrowUpRight} />
-            <Stat label={t('overdue')} value={a.overdue} icon={Clock} />
+            <Stat
+              label={t('implemented')}
+              value={a.implemented}
+              icon={ArrowUpRight}
+              tone="success"
+            />
+            <Stat label={t('overdue')} value={a.overdue} icon={Clock} tone="alert" />
             <Stat
               label={t('firstResponse')}
               value={
@@ -656,6 +667,13 @@ export function NewAppeal({ close }: { close: () => void }) {
     [files, setFiles] = useState<File[]>([]),
     [localError, setLocalError] = useState('');
   const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = overflow;
+    };
+  }, []);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
     ref.current?.querySelector<HTMLInputElement>('input')?.focus();
@@ -736,84 +754,89 @@ export function NewAppeal({ close }: { close: () => void }) {
             <X size={18} />
           </Button>
         </div>
-        <form onSubmit={submit} className="p-6 space-y-5">
-          <div className="grid sm:grid-cols-2 gap-4">
+        <form onSubmit={submit} className="new-appeal-form">
+          <div className="p-6 space-y-5">
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="create-type">{t('type')}</label>
+                <select id="create-type" name="type">
+                  {['PROBLEM', 'SUGGESTION', 'PRAISE'].map((v) => (
+                    <option value={v} key={v}>
+                      {t(`types.${v}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="create-category">{t('category')}</label>
+                <select id="create-category" name="categoryId" required>
+                  <option value="">—</option>
+                  {lookups.categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c[locale]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div data-tour="form">
+              <label htmlFor="create-title">{t('title')}</label>
+              <input id="create-title" name="title" required maxLength={180} />
+            </div>
             <div>
-              <label htmlFor="create-type">{t('type')}</label>
-              <select id="create-type" name="type">
-                {['PROBLEM', 'SUGGESTION', 'PRAISE'].map((v) => (
+              <label htmlFor="create-description">{t('description')}</label>
+              <textarea id="create-description" name="description" required maxLength={10000} />
+            </div>
+            <div>
+              <label htmlFor="create-solution">
+                {t('proposedSolution')} · {t('optional')}
+              </label>
+              <textarea id="create-solution" name="proposedSolution" maxLength={10000} />
+            </div>
+            <div>
+              <label htmlFor="create-priority">{t('priority')}</label>
+              <select id="create-priority" name="priority" defaultValue="MEDIUM">
+                {['LOW', 'MEDIUM', 'HIGH'].map((v) => (
                   <option value={v} key={v}>
-                    {t(`types.${v}`)}
+                    {t(`priorities.${v}`)}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label htmlFor="create-category">{t('category')}</label>
-              <select id="create-category" name="categoryId" required>
-                <option value="">—</option>
-                {lookups.categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c[locale]}
-                  </option>
-                ))}
-              </select>
+              <label htmlFor="create-files">
+                {t('attachments')} · {t('optional')}
+              </label>
+              <input
+                id="create-files"
+                type="file"
+                multiple
+                accept=".pdf,.png,.jpg,.jpeg,.txt,.docx,.xlsx"
+                onChange={(e) => setFiles(Array.from(e.target.files || []))}
+              />
+              <p className="text-xs muted mt-2">{t('fileHint')}</p>
             </div>
+            {localError && (
+              <p className="error" role="alert">
+                {t.has(`errors.${localError}`)
+                  ? t(`errors.${localError}`)
+                  : t('errors.serverError')}
+              </p>
+            )}
           </div>
-          <div>
-            <label htmlFor="create-title">{t('title')}</label>
-            <input id="create-title" name="title" required maxLength={180} />
-          </div>
-          <div>
-            <label htmlFor="create-description">{t('description')}</label>
-            <textarea id="create-description" name="description" required maxLength={10000} />
-          </div>
-          <div>
-            <label htmlFor="create-solution">
-              {t('proposedSolution')} · {t('optional')}
+          <div className="appeal-form-footer">
+            <label className="anonymous-control" data-tour="anonymous">
+              <input type="checkbox" name="anonymous" />
+              <span>{t('anonymous')}</span>
             </label>
-            <textarea id="create-solution" name="proposedSolution" maxLength={10000} />
-          </div>
-          <div>
-            <label htmlFor="create-priority">{t('priority')}</label>
-            <select id="create-priority" name="priority" defaultValue="MEDIUM">
-              {['LOW', 'MEDIUM', 'HIGH'].map((v) => (
-                <option value={v} key={v}>
-                  {t(`priorities.${v}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="surface rounded-md p-4">
-            <label className="flex gap-2 items-center">
-              <input type="checkbox" name="anonymous" className="!w-auto" />
-              {t('anonymous')}
-            </label>
-            <p className="text-xs muted">{t('anonymousHint')}</p>
-          </div>
-          <div>
-            <label htmlFor="create-files">
-              {t('attachments')} · {t('optional')}
-            </label>
-            <input
-              id="create-files"
-              type="file"
-              multiple
-              accept=".pdf,.png,.jpg,.jpeg,.txt,.docx,.xlsx"
-              onChange={(e) => setFiles(Array.from(e.target.files || []))}
-            />
-            <p className="text-xs muted mt-2">{t('fileHint')}</p>
-          </div>
-          {localError && (
-            <p className="error" role="alert">
-              {t.has(`errors.${localError}`) ? t(`errors.${localError}`) : t('errors.serverError')}
-            </p>
-          )}
-          <div className="flex justify-end gap-3 border-t pt-5">
-            <Button type="button" variant="outline" disabled={busy} onClick={close}>
-              {t('cancel')}
-            </Button>
-            <Button disabled={busy}>{busy ? t('loading') : t('submit')}</Button>
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" disabled={busy} onClick={close}>
+                {t('cancel')}
+              </Button>
+              <Button disabled={busy} data-tour="submit">
+                {busy ? t('loading') : t('submit')}
+              </Button>
+            </div>
           </div>
         </form>
       </div>

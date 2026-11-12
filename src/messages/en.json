@@ -221,5 +221,56 @@
     "180": "3 hours",
     "1440": "24 hours",
     "10080": "7 days"
+  },
+  "charts": {
+    "eyebrow": "Workspace pulse",
+    "activity": "Appeal activity",
+    "period": "Chart period",
+    "days": "{count} days",
+    "received": "received",
+    "completed": "completed",
+    "summary": "In {days} days: {created} received, {completed} completed",
+    "daySummary": "{created} received, {completed} completed",
+    "quiet": "No new activity in this period yet",
+    "table": "Daily data",
+    "statuses": "Appeals by status",
+    "statusSummary": "{total} appeals in total, {completed} completed",
+    "details": "Explore analytics",
+    "date": "Date"
+  },
+  "notificationsUi": {
+    "filter": "Notification filter",
+    "unread": "Unread",
+    "caughtUp": "All caught up",
+    "empty": "No notifications yet",
+    "hint": "New messages and updates will appear here.",
+    "open": "Open",
+    "latest": "Latest 100 notifications"
+  },
+  "tour": {
+    "step": "Step {current} of {total}",
+    "skip": "Skip",
+    "finish": "Finish",
+    "replay": "Take a tour",
+    "nav-appeals": {
+      "title": "Start with appeals",
+      "text": "Your questions, ideas and suggestions live here. Click Appeals in the sidebar to learn how to create one."
+    },
+    "create": {
+      "title": "Share your question",
+      "text": "Click Create appeal to open a form for a problem, an idea or a thank-you to your colleagues."
+    },
+    "form": {
+      "title": "Focus on the essentials",
+      "text": "Choose a category, add a short title and describe the situation. You can also suggest a solution and attach files."
+    },
+    "anonymous": {
+      "title": "Choose how to send it",
+      "text": "Enable Send anonymously to hide your name from participants. This switch is always next to the create button."
+    },
+    "submit": {
+      "title": "You’re ready!",
+      "text": "This button sends a completed appeal. During the tour, clicking it only finishes the guide. After the tour, complete the form and submit when ready."
+    }
   }
 }

@@ -16,7 +16,7 @@ import {
   Sun,
   Moon,
   X,
-  CheckCheck,
+  CircleHelp,
   CheckCircle2,
 } from 'lucide-react';
 import ru from '@/messages/ru.json';
@@ -29,10 +29,11 @@ import {
   type Locale,
   type Lookups,
   type Notification,
-  date,
   num,
 } from './context';
 import { Overview, AppealList, AnalyticsScreen, NewAppeal, AppealDetail } from './appeals';
+import { GuidedTour } from './guided-tour';
+import { NotificationCenter } from './notifications';
 import { SettingsScreen, PasswordForm } from './settings';
 import { signOutLocally } from '@/lib/session-client';
 const messages = { ru, kk, en };
@@ -349,8 +350,10 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
     [toast, setToast] = useState<Notification | null>(null),
     [guide, setGuide] = useState(
       () => !user.guideDismissed && sessionStorage.getItem('guide-seen:' + user.id) !== '1',
-    ),
-    [dontShow, setDontShow] = useState(false);
+    );
+  const closeNotes = useCallback(() => setNotesOpen(false), []);
+  const openNew = useCallback(() => setNewOpen(true), []);
+  const closeNew = useCallback(() => setNewOpen(false), []);
   const seen = useRef<Set<string> | null>(null);
   useEffect(() => {
     if (user.mustChangePassword) return;
@@ -401,6 +404,7 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           {nav.map(([key, Icon]) => (
             <button
               key={key}
+              data-tour={`nav-${key}`}
               className={`navitem ${view === key ? 'selected' : ''}`}
               aria-current={view === key ? 'page' : undefined}
               onClick={() => {
@@ -414,6 +418,18 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           ))}
         </nav>
         <div className="mt-auto p-4">
+          {!user.mustChangePassword && (
+            <button
+              className="sidebar-help"
+              onClick={() => {
+                setGuide(true);
+                setNotesOpen(false);
+              }}
+            >
+              <CircleHelp size={16} />
+              {t('tour.replay')}
+            </button>
+          )}
           <div className="flex gap-3 items-center border-t pt-5">
             <div className="rounded-full surface w-9 h-9 grid place-items-center font-semibold text-blue-600">
               {user.name[0]}
@@ -457,13 +473,14 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
                 variant="ghost"
                 size="icon"
                 className="relative"
+                data-tour="notifications"
+                aria-expanded={notesOpen}
+                aria-controls="notification-center"
                 aria-label={t('notifications')}
                 onClick={() => setNotesOpen(!notesOpen)}
               >
                 <Bell size={18} />
-                {notes.some((n) => !n.readAt) && (
-                  <span className="absolute right-2 top-2 w-1.5 h-1.5 rounded-full bg-blue-600" />
-                )}
+                {notes.some((n) => !n.readAt) && <span className="notification-bell-dot" />}
               </Button>
             )}
           </div>
@@ -511,54 +528,31 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           ) : view === 'analytics' ? (
             <AnalyticsScreen />
           ) : view === 'appeals' || view === 'results' ? (
-            <AppealList results={view === 'results'} onNew={() => setNewOpen(true)} />
+            <AppealList results={view === 'results'} onNew={openNew} />
           ) : (
-            <Overview onNew={() => setNewOpen(true)} />
+            <Overview onNew={openNew} />
           )}
         </main>
       </div>
       {guide && !user.mustChangePassword && (
-        <div className="overlay">
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="guide-title"
-            className="dialog p-6 max-w-lg"
-          >
-            <h2 id="guide-title" className="text-xl font-semibold mb-4">
-              {t('guideTitle')}
-            </h2>
-            <ol className="list-decimal pl-5 space-y-3 text-sm">
-              <li>{t('guideCreate')}</li>
-              <li>{t('guideDiscuss')}</li>
-              <li>{t('guideFinish')}</li>
-            </ol>
-            <label className="flex gap-2 items-center mt-6">
-              <input
-                type="checkbox"
-                className="!w-auto"
-                checked={dontShow}
-                onChange={(e) => setDontShow(e.target.checked)}
-              />
-              {t('dontShow')}
-            </label>
-            <Button
-              className="mt-4"
-              onClick={async () => {
-                try {
-                  if (dontShow) await api('profile', { guideDismissed: true });
-                  sessionStorage.setItem('guide-seen:' + user.id, '1');
-                  setGuide(false);
-                } catch {}
-              }}
-            >
-              {t('understood')}
-            </Button>
-          </section>
-        </div>
+        <GuidedTour
+          openForm={openNew}
+          openMenu={setMenu}
+          close={() => {
+            setGuide(false);
+            setMenu(false);
+          }}
+          dismiss={async (permanent) => {
+            if (permanent) await api('profile', { guideDismissed: true });
+            sessionStorage.setItem('guide-seen:' + user.id, '1');
+          }}
+        />
       )}
       {toast && (
-        <div role="status" className="fixed bottom-5 right-5 z-50 panel shadow-xl p-4 max-w-sm">
+        <div
+          role="status"
+          className="notification-toast fixed bottom-5 right-5 z-50 panel shadow-xl p-4 max-w-sm"
+        >
           <button
             aria-label={t('close')}
             className="float-right ml-4"
@@ -580,51 +574,19 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           </button>
         </div>
       )}
-      {newOpen && <NewAppeal close={() => setNewOpen(false)} />}{' '}
+      {newOpen && <NewAppeal close={closeNew} />}
       {notesOpen && (
-        <div className="fixed z-50 top-[64px] right-3 md:right-8 w-[min(400px,calc(100vw-24px))] panel shadow-xl max-h-[80vh] overflow-auto">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="font-semibold">{t('notifications')}</h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('close')}
-              onClick={() => setNotesOpen(false)}
-            >
-              <X size={17} />
-            </Button>
-          </div>
-          <Button
-            variant="ghost"
-            className="m-2"
-            onClick={async () => {
-              await api('notifications', {});
-              refresh();
-            }}
-          >
-            <CheckCheck size={16} />
-            {t('markAll')}
-          </Button>
-          {!notes.length && <p className="p-6 muted">{t('empty')}</p>}
-          {notes.map((n) => (
-            <button
-              key={n.id}
-              className={`block w-full text-left border-t p-4 ${!n.readAt ? 'surface' : ''}`}
-              onClick={async () => {
-                await api('notifications', { id: n.id });
-                setNotesOpen(false);
-                navigate({ view: 'appeals', id: n.appeal.id });
-                refresh();
-              }}
-            >
-              <p className="text-xs text-blue-600">
-                {t(`events.${n.kind}`)} · {num(n.appeal.number)}
-              </p>
-              <p className="text-sm mt-2 line-clamp-2">{n.appeal.title}</p>
-              <p className="text-[10px] muted mt-2">{date(n.createdAt, locale, true)}</p>
-            </button>
-          ))}
-        </div>
+        <NotificationCenter
+          notes={notes}
+          close={closeNotes}
+          onRead={(ids) =>
+            setNotes((previous) =>
+              previous.map((n) =>
+                ids.includes(n.id) ? { ...n, readAt: new Date().toISOString() } : n,
+              ),
+            )
+          }
+        />
       )}
     </>
   );

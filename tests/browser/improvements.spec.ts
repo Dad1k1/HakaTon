@@ -22,8 +22,8 @@ test('anonymous discussion supports live replies, editing, file paste/drop, remi
     staff = await adminContext.newPage();
   for (const p of [page, staff]) {
     await p.goto(baseURL + '/?view=appeals&id=' + created.id);
-    if (await p.getByRole('button', { name: 'Понятно', exact: true }).isVisible())
-      await p.getByRole('button', { name: 'Понятно', exact: true }).click();
+    if (await p.getByRole('button', { name: 'Пропустить', exact: true }).isVisible())
+      await p.getByRole('button', { name: 'Пропустить', exact: true }).click();
   }
   await expect(staff.getByText('Анонимный сотрудник', { exact: true }).first()).toBeVisible();
   await expect(staff.locator('#detail-files')).toHaveCount(0);
@@ -93,7 +93,7 @@ test('new request popup and guide dismissal persist', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByLabel('Больше не показывать', { exact: true }).check();
-  await page.getByRole('button', { name: 'Понятно', exact: true }).click();
+  await page.getByRole('button', { name: 'Пропустить', exact: true }).click();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Всё начинается с диалога' })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);

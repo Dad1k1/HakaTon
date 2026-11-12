@@ -79,6 +79,7 @@ export type Notification = {
   appeal: { id: string; number: number; title: string };
 };
 export type Analytics = {
+  daily: { date: string; created: number; completed: number }[];
   total: number;
   waiting: number;
   awaitingResponse: number;

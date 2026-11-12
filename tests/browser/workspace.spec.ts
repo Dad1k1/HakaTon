@@ -7,8 +7,8 @@ async function login(page: Page, role = 'employee') {
   await page.getByLabel('Пароль', { exact: true }).fill(c.password);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Всё начинается с диалога' })).toBeVisible();
-  if (await page.getByRole('button', { name: 'Понятно', exact: true }).isVisible())
-    await page.getByRole('button', { name: 'Понятно', exact: true }).click();
+  if (await page.getByRole('button', { name: 'Пропустить', exact: true }).isVisible())
+    await page.getByRole('button', { name: 'Пропустить', exact: true }).click();
 }
 test('generic login error and unauthenticated API denial', async ({ page }) => {
   await page.goto('/');
@@ -180,7 +180,15 @@ test('responsible completes clarification flow in the browser and sees notificat
       await page
         .getByLabel('Комментарий / причина / выполненные действия', { exact: true })
         .fill(reason);
+    const saved = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/data/appeals/' + created.id) &&
+        response.request().method() === 'POST',
+    );
     await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+    expect((await saved).ok()).toBe(true);
+    // The selected option changes before saving; wait for the refreshed persisted status.
+    await expect(page.locator('.badge.' + status).first()).toBeVisible();
     await expect(page.getByLabel('Статус', { exact: true })).toHaveValue(status);
   };
   await save('REVIEW');

@@ -5,6 +5,7 @@ import {
   canAssign,
   validTransition,
   metrics,
+  dailyActivity,
   overdue,
   routeCandidate,
   terminal,
@@ -129,4 +130,31 @@ it('translations cover identical keys in all languages', () => {
     Object.entries(v).flatMap(([k, a]) => (typeof a === 'object' ? keys(a, p + k + '.') : [p + k]));
   expect(keys(kk)).toEqual(keys(ru));
   expect(keys(en)).toEqual(keys(ru));
+});
+
+describe('daily chart activity', () => {
+  it('uses 30 UTC days, fills gaps and counts completions by completion date', () => {
+    const days = dailyActivity(
+      [
+        {
+          createdAt: new Date('2026-10-13T23:59:59Z'),
+          completedAt: new Date('2026-11-12T00:00:00Z'),
+        },
+        { createdAt: new Date('2026-10-14T00:00:00Z'), completedAt: null },
+        { createdAt: new Date('2026-11-11T23:30:00-02:00'), completedAt: null },
+        { createdAt: new Date('2026-11-13T00:00:00Z'), completedAt: null },
+      ],
+      new Date('2026-11-12T15:00:00Z'),
+    );
+    expect(days).toHaveLength(30);
+    expect(days[0]).toEqual({ date: '2026-10-14', created: 1, completed: 0 });
+    expect(days[29]).toEqual({ date: '2026-11-12', created: 1, completed: 1 });
+    expect(days[1]).toEqual({ date: '2026-10-15', created: 0, completed: 0 });
+    expect(days.reduce((sum, d) => sum + d.created, 0)).toBe(2);
+  });
+  it('keeps an empty workspace truthful', () => {
+    expect(dailyActivity([], new Date('2026-11-12')).every((d) => !d.created && !d.completed)).toBe(
+      true,
+    );
+  });
 });

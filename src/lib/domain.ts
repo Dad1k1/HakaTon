@@ -94,3 +94,24 @@ export function routeCandidate(
   );
 }
 export const numberLabel = (n: number) => `A-${String(n).padStart(3, '0')}`;
+
+// UTC day buckets keep chart dates stable across server and browser time zones.
+export function dailyActivity(
+  rows: { createdAt: Date; completedAt: Date | null }[],
+  now = new Date(),
+) {
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 29));
+  const days = Array.from({ length: 30 }, (_, i) => ({
+    date: new Date(start.getTime() + i * 86400000).toISOString().slice(0, 10),
+    created: 0,
+    completed: 0,
+  }));
+  const buckets = new Map(days.map((day) => [day.date, day]));
+  for (const row of rows) {
+    const created = buckets.get(row.createdAt.toISOString().slice(0, 10));
+    if (created) created.created++;
+    const completed = row.completedAt && buckets.get(row.completedAt.toISOString().slice(0, 10));
+    if (completed) completed.completed++;
+  }
+  return days;
+}

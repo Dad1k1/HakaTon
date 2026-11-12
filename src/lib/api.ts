@@ -17,6 +17,7 @@ import {
   terminal,
   validTransition,
   metrics,
+  dailyActivity,
   routeCandidate,
 } from './domain';
 class ApiError extends Error {
@@ -286,6 +287,7 @@ async function get(u: User, p: string[], q: URLSearchParams) {
     }
     return {
       ...metrics(rows),
+      daily: dailyActivity(rows),
       unassigned: u.role === 'ADMIN' ? rows.filter((a) => !a.assigneeId).length : 0,
       waiting: rows.filter((a) => a.status === 'WAITING').length,
       awaitingResponse: rows.filter((a) => !a.firstResponseAt && !terminal.includes(a.status))
