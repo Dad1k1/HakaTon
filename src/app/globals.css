@@ -1729,161 +1729,99 @@ html {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-/* Full-bleed industrial product scene, with independent readable content layers. */
-.login-grid {
+/* The camera video stays paused; cursor movement seeks one frame at a time. */
+.login-screen {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
-  background: #e8edf0;
+  min-height: 100svh;
+  background: #f1f1f1;
 }
-.dark .login-grid {
-  background: #10131b;
+.dark .login-screen {
+  background: #0e0e0e;
 }
-.login-info,
-.dark .login-info {
-  position: relative;
-  z-index: 1;
-  background: transparent;
-  gap: 28px;
-  padding: clamp(28px, 4vw, 56px);
-}
-.login-grid > main {
-  position: relative;
-  z-index: 1;
-  background: linear-gradient(90deg, #f7f9fa45, #f7f9fadc 35%, #f7f9faf2);
-}
-.dark .login-grid > main {
-  background: linear-gradient(90deg, #10131b10, #10131b95 35%, #10131bd9);
-}
-.login-grid::after {
-  content: '';
-  position: absolute;
+.camera-video-background {
+  position: fixed;
   inset: 0;
   z-index: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(90deg, #eef2f4d9 0%, #eef2f420 35%, transparent 60%),
-    linear-gradient(0deg, #eef2f4e6, transparent 75%);
-}
-.dark .login-grid::after {
-  background:
-    linear-gradient(90deg, #10131bc4 0%, #10131b10 36%, transparent 64%),
-    linear-gradient(0deg, #10131bf2, #10131b00 85%);
-}
-.login-copy h1 {
-  font-size: clamp(26px, 2.6vw, 36px);
-  margin-top: 12px;
-}
-.login-copy > p {
-  margin-top: 16px;
-}
-.login-copy > div {
-  margin-top: 22px;
-}
-.tracking-camera {
-  --camera-x: 0;
-  --camera-y: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 70% center;
+  transform: translateY(-24vh);
   pointer-events: none;
   user-select: none;
-  perspective: 1400px;
+  filter: invert(1) grayscale(1);
+  mask-image: linear-gradient(#000 0%, #000 48%, transparent 78%);
 }
-.camera-background {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
+.dark .camera-video-background {
+  filter: none;
 }
-.camera-head {
-  position: absolute;
-  top: -3vh;
-  left: -3vw;
-  width: 112vw;
-  max-width: 1850px;
-  transform-origin: 38% 55%;
-  transform: translate3d(calc(var(--camera-x) * 16px), calc(var(--camera-y) * 10px), 0)
-    rotateX(calc(var(--camera-y) * -6deg)) rotateY(calc(var(--camera-x) * 9deg));
-  will-change: transform;
-  opacity: 0.65;
+.login-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 20px clamp(20px, 4vw, 56px);
 }
-.dark .camera-head {
-  opacity: 0.86;
-}
-.camera-head img {
-  display: block;
+.login-content {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  height: auto;
-  filter: drop-shadow(0 32px 35px #05080f50);
+  max-width: 456px;
+  margin: 0 auto;
+  padding: clamp(220px, 29vh, 320px) 20px 40px;
 }
-.camera-glass-light {
-  position: absolute;
-  left: 30%;
-  top: 38%;
-  width: 16%;
-  height: 33%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at 30% 20%, #9cb7ce18, transparent 60%);
-  transform: translate(calc(var(--camera-x) * 9px), calc(var(--camera-y) * 7px));
+.login-card {
+  border: 1px solid #d7d7d799;
+  border-radius: 26px;
+  padding: 28px;
+  background: #ffffffd9;
+  box-shadow: 0 24px 70px #00000008;
+  backdrop-filter: blur(18px);
 }
-.login-grid input {
-  background: #ffffffad;
-  border: 1px solid #c9d0d5;
+.dark .login-card {
+  background: #161616d9;
+  border-color: #ffffff14;
+  box-shadow: 0 24px 70px #0004;
 }
-.dark .login-grid input {
-  background: #0f131da6;
-  border-color: #505a6b;
+.login-card h2,
+.login-card > p {
+  text-align: center;
 }
-.login-grid .primary-action {
+.login-card form {
+  margin-top: 24px;
+}
+.login-card .primary-action {
   background: #d7364c;
   color: white;
-  box-shadow: 0 6px 24px #d7364c20;
 }
-.login-grid .surface {
-  background: #ffffff70;
-}
-.dark .login-grid .surface {
-  background: #151b26b3;
+.login-card .surface {
+  border-radius: 16px;
+  margin-top: 24px;
 }
 @media (max-width: 767px) {
-  .camera-head {
-    width: 170vw;
-    left: -42vw;
-    top: 1vh;
-    opacity: 0.3;
+  .login-header {
+    padding: 12px 16px;
   }
-  .dark .camera-head {
-    opacity: 0.48;
+  .login-header .brand-logo {
+    width: 132px;
   }
-  .login-grid > main {
-    background: linear-gradient(0deg, #f7f9faf2, #f7f9fab8);
+  .login-header .brand-logo img {
+    width: 132px;
+    height: auto;
   }
-  .dark .login-grid > main {
-    background: linear-gradient(0deg, #10131bf5, #10131b94);
+  .camera-video-background {
+    object-position: 50% center;
+    transform: translateY(-26vh);
   }
-  .login-grid > main > div:last-child {
-    padding-top: 120px;
+  .login-content {
+    padding-top: clamp(175px, 25vh, 250px);
+    padding-left: 16px;
+    padding-right: 16px;
   }
-}
-@media (hover: none) and (prefers-reduced-motion: no-preference) {
-  .camera-head {
-    animation: camera-idle 12s ease-in-out infinite;
-  }
-}
-@keyframes camera-idle {
-  0%,
-  100% {
-    transform: rotateY(-3deg);
-  }
-  50% {
-    transform: rotateY(3deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .camera-head {
-    transform: none;
-    animation: none !important;
-    will-change: auto;
-  }
-  .camera-glass-light {
-    transform: none;
+  .login-card {
+    padding: 24px;
   }
 }

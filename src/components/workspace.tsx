@@ -36,7 +36,7 @@ import { GuidedTour } from './guided-tour';
 import { NotificationCenter } from './notifications';
 import { SettingsScreen, PasswordForm } from './settings';
 import { signOutLocally } from '@/lib/session-client';
-import { TrackingCamera } from './tracking-camera';
+import { VideoCameraBackground } from './video-camera-background';
 import { BrandLogo } from './ui/brand-logo';
 import { Avatar } from './ui/avatar';
 import { MotionPills } from './ui/motion-pills';
@@ -271,71 +271,49 @@ function Login({
     }
   }
   return (
-    <div className="login-grid">
-      <TrackingCamera className="camera-background" />
-      <aside className="login-info">
-        <div className="flex items-center gap-3">
-          <BrandLogo />
-        </div>
-        <div className="max-w-md login-copy">
-          <span className="eyebrow">{t('workspace')}</span>
-          <h1 className="text-4xl leading-tight font-semibold tracking-tight mt-5">
-            {t('tagline')}
-          </h1>
-          <p className="muted leading-7 mt-6">{t('overviewText')}</p>
-          <div className="flex items-center gap-3 mt-10 text-xs muted">
-            <ShieldCheck size={18} />
-            {t('privacy')}
-          </div>
-        </div>
-        <p className="text-xs muted">
-          {t('brand')} · {t('local')}
-        </p>
-      </aside>
-      <main className="flex flex-col min-h-screen">
-        <div className="flex justify-end p-6">
-          <Preferences {...{ locale, theme, setLocale, setTheme }} />
-        </div>
-        <div className="flex-1 flex items-center justify-center p-7">
-          <div className="w-full max-w-sm">
-            <div className="mb-7 md:hidden">
-              <BrandLogo />
+    <div className="login-screen">
+      <VideoCameraBackground />
+      <header className="login-header">
+        <BrandLogo />
+        <Preferences {...{ locale, theme, setLocale, setTheme }} />
+      </header>
+      <main className="login-content">
+        <section className="login-card" aria-labelledby="signin-title">
+          <h2 id="signin-title" className="text-2xl font-semibold tracking-tight">
+            {t('signIn')}
+          </h2>
+          <p className="muted mt-2 text-sm">{t('product')}</p>
+          <form onSubmit={submit} className="mt-8 space-y-5">
+            <div>
+              <label htmlFor="login">{t('login')}</label>
+              <input id="login" name="login" autoComplete="username" required maxLength={80} />
             </div>
-            <p className="eyebrow mb-3">{t('brand')}</p>
-            <h2 className="text-2xl font-semibold tracking-tight">{t('signIn')}</h2>
-            <p className="muted mt-2 text-sm">{t('product')}</p>
-            <form onSubmit={submit} className="mt-8 space-y-5">
-              <div>
-                <label htmlFor="login">{t('login')}</label>
-                <input id="login" name="login" autoComplete="username" required maxLength={80} />
-              </div>
-              <div>
-                <label htmlFor="password">{t('password')}</label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  maxLength={256}
-                />
-              </div>
-              {error && (
-                <div role="alert" className="error">
-                  {error}
-                </div>
-              )}
-              <Button className="w-full" disabled={busy}>
-                {busy ? t('loading') : t('signIn')}
-                <ArrowRight size={16} />
-              </Button>
-            </form>
-            <p className="muted text-xs mt-5">{t('accountNotice')}</p>
-            <div className="surface rounded-md p-4 mt-10 text-xs muted leading-6">
-              {t('demoNotice')}
+            <div>
+              <label htmlFor="password">{t('password')}</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                maxLength={256}
+              />
             </div>
+            {error && (
+              <div role="alert" className="error">
+                {error}
+              </div>
+            )}
+            <Button className="w-full" disabled={busy}>
+              {busy ? t('loading') : t('signIn')}
+              <ArrowRight size={16} />
+            </Button>
+          </form>
+          <p className="muted text-xs mt-5">{t('accountNotice')}</p>
+          <div className="surface rounded-md p-4 mt-10 text-xs muted leading-6">
+            {t('demoNotice')}
           </div>
-        </div>
+        </section>
       </main>
     </div>
   );
