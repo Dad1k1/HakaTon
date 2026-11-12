@@ -7,6 +7,8 @@ async function login(page: Page, role = 'employee') {
   await page.getByLabel('Пароль', { exact: true }).fill(c.password);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Всё начинается с диалога' })).toBeVisible();
+  if (await page.getByRole('button', { name: 'Понятно', exact: true }).isVisible())
+    await page.getByRole('button', { name: 'Понятно', exact: true }).click();
 }
 test('generic login error and unauthenticated API denial', async ({ page }) => {
   await page.goto('/');
@@ -36,9 +38,10 @@ for (const role of ['employee', 'responsible', 'manager', 'admin'])
       .getByRole('button', { name: 'Настройки', exact: true })
       .click();
     await expect(page.getByRole('heading', { name: 'Профиль', exact: true })).toBeVisible();
-    if (role === 'admin')
+    if (role === 'admin') {
+      await page.getByRole('button', { name: 'Администрирование', exact: true }).click();
       await expect(page.getByRole('heading', { name: 'Администрирование' })).toBeVisible();
-    else await expect(page.getByRole('heading', { name: 'Администрирование' })).toHaveCount(0);
+    } else await expect(page.getByRole('heading', { name: 'Администрирование' })).not.toBeVisible();
     await page.getByRole('button', { name: 'Выйти', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Войти', exact: true })).toBeVisible();
   });
@@ -59,13 +62,13 @@ test('creates appeal with file, adds comment, persists filter URL', async ({ pag
   });
   await dialog.getByRole('button', { name: 'Отправить обращение' }).click();
   await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: /browser.txt/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /browser.txt/ }).first()).toBeVisible();
   await page.getByLabel('Обсуждение', { exact: true }).fill('Extra information');
   await page.getByRole('button', { name: 'Отправить', exact: true }).click();
   await expect(page.getByText('Extra information', { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByText('Extra information', { exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: /browser.txt/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /browser.txt/ }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Обращения', exact: true }).last().click();
   await page.getByRole('textbox', { name: 'Номер, заголовок или описание' }).fill(title);
   await page.getByRole('button', { name: 'Номер, заголовок или описание', exact: true }).click();
@@ -132,7 +135,7 @@ for (const locale of ['ru', 'kk', 'en'])
       await expect(page.locator('html')).toHaveClass(theme === 'dark' ? /dark/ : /^$/);
       // Restore profile preferences so each case starts in Russian/light.
       await page.request.post('/api/data/profile', {
-        headers: { Origin: 'http://localhost:3000' },
+        headers: { Origin: process.env.TEST_BASE_URL || 'http://localhost:3000' },
         data: { locale: 'ru', theme: 'light' },
       });
     });

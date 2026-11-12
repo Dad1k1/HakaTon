@@ -691,7 +691,10 @@ export function NewAppeal({ close }: { close: () => void }) {
       if (files.length > 5) throw new Error('fileCount');
       if (files.some((f) => f.size > 10 * 1024 * 1024)) throw new Error('fileSize');
       const f = new FormData(e.currentTarget);
-      const a = await api<Appeal>('appeals', Object.fromEntries(f));
+      const a = await api<Appeal>('appeals', {
+        ...Object.fromEntries(f),
+        anonymous: f.get('anonymous') === 'on',
+      });
       let uploadError = '';
       if (files.length) {
         try {
@@ -781,6 +784,13 @@ export function NewAppeal({ close }: { close: () => void }) {
               ))}
             </select>
           </div>
+          <div className="surface rounded-md p-4">
+            <label className="flex gap-2 items-center">
+              <input type="checkbox" name="anonymous" className="!w-auto" />
+              {t('anonymous')}
+            </label>
+            <p className="text-xs muted">{t('anonymousHint')}</p>
+          </div>
           <div>
             <label htmlFor="create-files">
               {t('attachments')} · {t('optional')}
@@ -812,10 +822,28 @@ export function NewAppeal({ close }: { close: () => void }) {
 }
 export function AppealDetail({ id }: { id: string }) {
   const t = useTranslations();
-  const { user, locale, api, refresh, navigate, setError } = useApp();
+  const { user, locale, api, refresh, navigate, setError, notice } = useApp();
   const { data: a, loading } = useLoad<Appeal>('appeals/' + id);
   const [busy, setBusy] = useState(false),
-    [comment, setComment] = useState('');
+    [comment, setComment] = useState(''),
+    [editing, setEditing] = useState<string | null>(null),
+    [editBody, setEditBody] = useState(''),
+    [minutes, setMinutes] = useState('30'),
+    [rating, setRating] = useState('5'),
+    [completion, setCompletion] = useState('');
+  async function mutate(path: string, body: Record<string, unknown>) {
+    if (!a) return;
+    setBusy(true);
+    try {
+      await api('appeals/' + a.id + '/' + path, { version: a.version, ...body });
+      setEditing(null);
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   const manageable =
     a &&
     (user.role === 'ADMIN' ||
@@ -835,10 +863,10 @@ export function AppealDetail({ id }: { id: string }) {
       setBusy(false);
     }
   }
-  async function upload(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!a || !e.target.files?.length) return;
+  async function uploadFiles(files: File[]) {
+    if (!a || !files.length || busy) return;
     const f = new FormData();
-    for (const file of e.target.files) f.append('files', file);
+    for (const file of files) f.append('files', file);
     f.append('version', String(a.version));
     setBusy(true);
     try {
@@ -847,11 +875,10 @@ export function AppealDetail({ id }: { id: string }) {
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      e.target.value = '';
       setBusy(false);
     }
   }
-  if (loading) return <Loading />;
+  if (loading && !a) return <Loading />;
   if (!a) return <Empty />;
   const field = (label: string, value: React.ReactNode) => (
     <div key={label}>
@@ -878,6 +905,39 @@ export function AppealDetail({ id }: { id: string }) {
       <h1 className="text-2xl font-semibold leading-relaxed tracking-tight max-w-4xl mb-7">
         {a.title}
       </h1>
+      {manageable && <ManageForm appeal={a} />}
+      <div className="flex flex-wrap items-center gap-3 my-5">
+        <label htmlFor="reminder-interval" className="!mb-0">
+          {t('remindAfter')}
+        </label>
+        <select
+          id="reminder-interval"
+          className="!w-auto"
+          value={minutes}
+          onChange={(e) => setMinutes(e.target.value)}
+        >
+          {[30, 60, 180, 1440, 10080].map((n) => (
+            <option key={n} value={n}>
+              {t(`intervals.${n}`)}
+            </option>
+          ))}
+        </select>
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={async () => {
+            try {
+              await api('appeals/' + a.id + '/reminder', { minutes: Number(minutes) });
+              notice(t('reminderSaved'));
+              refresh();
+            } catch (e) {
+              setError((e as Error).message);
+            }
+          }}
+        >
+          {t('setReminder')}
+        </Button>
+      </div>
       <div className="grid xl:grid-cols-[minmax(0,1fr)_310px] gap-6">
         <div className="min-w-0 space-y-6">
           <section className="panel p-6">
@@ -921,7 +981,7 @@ export function AppealDetail({ id }: { id: string }) {
                 </a>
               ))}
             </div>
-            {a.attachments.length < 5 && (
+            {a.attachments.length < 5 && !(user.role === 'ADMIN' && a.authorId !== user.id) && (
               <div className="mt-4">
                 <label htmlFor="detail-files">{t('upload')}</label>
                 <input
@@ -930,13 +990,45 @@ export function AppealDetail({ id }: { id: string }) {
                   multiple
                   accept=".pdf,.png,.jpg,.jpeg,.txt,.docx,.xlsx"
                   disabled={busy}
-                  onChange={upload}
+                  onChange={(e) => {
+                    void uploadFiles(Array.from(e.target.files || []));
+                    e.target.value = '';
+                  }}
                 />
                 <p className="muted text-[10px] mt-2">{t('fileHint')}</p>
               </div>
             )}
           </section>
-          <section className="panel p-6">
+          <section
+            className="panel p-6"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              void uploadFiles(Array.from(e.dataTransfer.files));
+            }}
+            onPaste={(e) => {
+              if (e.clipboardData.files.length) {
+                e.preventDefault();
+                void uploadFiles(Array.from(e.clipboardData.files));
+              }
+            }}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <p className="text-xs muted">{t('dropFiles')}</p>
+              {user.role === 'ADMIN' && a.comments.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => {
+                    if (window.confirm(t('confirmDiscussionDelete')))
+                      void mutate('discussion-delete', {});
+                  }}
+                >
+                  {t('deleteDiscussion')}
+                </Button>
+              )}
+            </div>
             <h2 className="font-semibold mb-5">
               {t('comments')} <span className="muted text-xs">{a.comments.length}</span>
             </h2>
@@ -946,9 +1038,76 @@ export function AppealDetail({ id }: { id: string }) {
                   <strong>{c.author.name}</strong>
                   <span className="muted text-[10px]">{date(c.createdAt, locale, true)}</span>
                 </div>
-                <p className="text-content text-sm mt-3">{c.body}</p>
+                {editing === c.id ? (
+                  <div className="space-y-2 mt-3">
+                    <textarea
+                      aria-label={t('editMessage')}
+                      value={editBody}
+                      onChange={(e) => setEditBody(e.target.value)}
+                      maxLength={10000}
+                    />
+                    <Button
+                      disabled={busy || !editBody.trim()}
+                      onClick={() =>
+                        void mutate('comments/' + c.id, { action: 'edit', body: editBody })
+                      }
+                    >
+                      {t('save')}
+                    </Button>
+                    <Button variant="ghost" onClick={() => setEditing(null)}>
+                      {t('cancel')}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-content text-sm mt-3">{c.body}</p>
+                )}
+                {(c.author.id === user.id || user.role === 'ADMIN') && (
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => {
+                        setEditing(c.id);
+                        setEditBody(c.body);
+                      }}
+                    >
+                      {t('editMessage')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => {
+                        if (window.confirm(t('confirmMessageDelete')))
+                          void mutate('comments/' + c.id, { action: 'delete' });
+                      }}
+                    >
+                      {t('delete')}
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
+              {a.attachments.map((f) => (
+                <a
+                  key={f.id}
+                  href={'/api/data/files/' + f.id}
+                  className="border rounded p-2 text-xs"
+                >
+                  {['image/png', 'image/jpeg'].includes(f.mime) && (
+                    <img
+                      src={'/api/data/files/' + f.id + '?inline=1'}
+                      alt={f.name}
+                      className="max-h-48 w-full object-contain mb-2"
+                      loading="lazy"
+                    />
+                  )}
+                  {f.name}
+                </a>
+              ))}
+            </div>
             <form onSubmit={submitComment}>
               <label htmlFor="comment" className="sr-only">
                 {t('comments')}
@@ -968,7 +1127,46 @@ export function AppealDetail({ id }: { id: string }) {
               </div>
             </form>
           </section>
-          {manageable && <ManageForm appeal={a} />}
+          {a.authorId === user.id && a.firstResponseAt && !a.rating && (
+            <section className="panel p-6">
+              <h2 className="font-semibold mb-4">{t('satisfied')}</h2>
+              <label htmlFor="completion-rating">{t('rating')}</label>
+              <select
+                id="completion-rating"
+                value={rating}
+                onChange={(e) => setRating(e.target.value)}
+              >
+                {[5, 4, 3, 2, 1].map((n) => (
+                  <option key={n} value={n}>
+                    {n} / 5
+                  </option>
+                ))}
+              </select>
+              <label htmlFor="completion-reason" className="mt-3">
+                {t('commentPlaceholder')}
+              </label>
+              <textarea
+                id="completion-reason"
+                value={completion}
+                maxLength={10000}
+                onChange={(e) => setCompletion(e.target.value)}
+              />
+              <Button
+                className="mt-3"
+                disabled={busy || !completion.trim()}
+                onClick={() =>
+                  void mutate('complete', { rating: Number(rating), reason: completion })
+                }
+              >
+                {t('closeOwn')}
+              </Button>
+            </section>
+          )}
+          {a.rating && (
+            <p className="panel p-4">
+              {t('rating')}: {a.rating} / 5
+            </p>
+          )}
           <section className="panel p-6">
             <h2 className="font-semibold mb-5">{t('history')}</h2>
             {a.history.map((h) => (
@@ -1015,6 +1213,11 @@ function ManageForm({ appeal: a }: { appeal: Appeal }) {
   const t = useTranslations();
   const { user, lookups, api, refresh, setError, notice } = useApp();
   const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [editVersion, setEditVersion] = useState(a.version);
+  useEffect(() => {
+    if (!dirty) setEditVersion(a.version);
+  }, [a.version, dirty]);
   const assign =
     user.role === 'ADMIN' || (user.role === 'MANAGER' && user.departmentId === a.departmentId);
   const statuses = terminal.includes(a.status)
@@ -1026,7 +1229,7 @@ function ManageForm({ appeal: a }: { appeal: Appeal }) {
     e.preventDefault();
     setBusy(true);
     const f = new FormData(e.currentTarget);
-    const b: Record<string, unknown> = { version: a.version };
+    const b: Record<string, unknown> = { version: editVersion };
     if (f.get('status') !== a.status) b.status = f.get('status');
     if (f.get('priority') !== a.priority) b.priority = f.get('priority');
     if (assign && f.get('assigneeId') !== (a.assigneeId || ''))
@@ -1037,6 +1240,7 @@ function ManageForm({ appeal: a }: { appeal: Appeal }) {
     if (f.get('reason')) b.reason = f.get('reason');
     try {
       await api('appeals/' + a.id, b);
+      setDirty(false);
       refresh();
       notice(t('saved'));
     } catch (e) {
@@ -1050,9 +1254,14 @@ function ManageForm({ appeal: a }: { appeal: Appeal }) {
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   };
   return (
-    <section className="panel p-6">
+    <section className="panel p-6 mb-6 border-t-4 border-t-primary">
       <h2 className="font-semibold mb-5">{t('manage')}</h2>
-      <form onSubmit={submit} key={a.version} className="space-y-5">
+      <form
+        onSubmit={submit}
+        key={editVersion}
+        onChange={() => setDirty(true)}
+        className="space-y-5"
+      >
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="manage-status">{t('status')}</label>
@@ -1065,50 +1274,57 @@ function ManageForm({ appeal: a }: { appeal: Appeal }) {
               ))}
             </select>
           </div>
-          <div>
-            <label htmlFor="manage-priority">{t('priority')}</label>
-            <select id="manage-priority" name="priority" defaultValue={a.priority}>
-              {['LOW', 'MEDIUM', 'HIGH'].map((p) => (
-                <option value={p} key={p}>
-                  {t(`priorities.${p}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          {assign && (
-            <div>
-              <label htmlFor="manage-assignee">{t('assignee')}</label>
-              <select id="manage-assignee" name="assigneeId" defaultValue={a.assigneeId || ''}>
-                {a.assignee && !lookups.users.some((u) => u.id === a.assigneeId) && (
-                  <option value={a.assignee.id}>{a.assignee.name}</option>
-                )}
-                <option value="">{t('unassigned')}</option>
-                {lookups.users
-                  .filter(
-                    (u) =>
-                      u.role !== 'EMPLOYEE' &&
-                      (user.role === 'ADMIN' ||
-                        u.departmentId === user.departmentId ||
-                        u.id === a.assigneeId),
-                  )
-                  .map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
+          <details className="sm:col-span-2">
+            <summary className="cursor-pointer text-sm font-medium mb-3">
+              {t('moreOptions')}
+            </summary>
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="manage-priority">{t('priority')}</label>
+                <select id="manage-priority" name="priority" defaultValue={a.priority}>
+                  {['LOW', 'MEDIUM', 'HIGH'].map((p) => (
+                    <option value={p} key={p}>
+                      {t(`priorities.${p}`)}
                     </option>
                   ))}
-              </select>
+                </select>
+              </div>
+              {assign && (
+                <div>
+                  <label htmlFor="manage-assignee">{t('assignee')}</label>
+                  <select id="manage-assignee" name="assigneeId" defaultValue={a.assigneeId || ''}>
+                    {a.assignee && !lookups.users.some((u) => u.id === a.assigneeId) && (
+                      <option value={a.assignee.id}>{a.assignee.name}</option>
+                    )}
+                    <option value="">{t('unassigned')}</option>
+                    {lookups.users
+                      .filter(
+                        (u) =>
+                          u.role !== 'EMPLOYEE' &&
+                          (user.role === 'ADMIN' ||
+                            u.departmentId === user.departmentId ||
+                            u.id === a.assigneeId),
+                      )
+                      .map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label htmlFor="manage-due">{t('dueAt')}</label>
+                <input
+                  id="manage-due"
+                  name="dueAt"
+                  type="datetime-local"
+                  defaultValue={localDate(a.dueAt)}
+                  required
+                />
+              </div>
             </div>
-          )}
-          <div>
-            <label htmlFor="manage-due">{t('dueAt')}</label>
-            <input
-              id="manage-due"
-              name="dueAt"
-              type="datetime-local"
-              defaultValue={localDate(a.dueAt)}
-              required
-            />
-          </div>
+          </details>
         </div>
         <div>
           <label htmlFor="manage-reason">{t('reason')}</label>

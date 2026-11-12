@@ -5,12 +5,12 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 export const cn = (...v: ClassValue[]) => twMerge(clsx(v));
 const variants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-blue-600 text-white hover:bg-blue-700',
-        outline: 'border border-border bg-background hover:bg-blue-50 dark:hover:bg-zinc-800',
+        default: 'bg-primary text-white hover:opacity-90',
+        outline: 'border border-border bg-background hover:bg-zinc-100 dark:hover:bg-zinc-800',
         ghost: 'hover:bg-zinc-100 dark:hover:bg-zinc-800',
         destructive: 'bg-red-600 text-white hover:bg-red-700',
       },

@@ -6,14 +6,14 @@
   --background: 0 0% 100%;
   --foreground: 222 25% 15%;
   --border: 220 15% 90%;
-  --primary: 217 80% 48%;
+  --primary: 354 72% 44%;
   color-scheme: light;
 }
 .dark {
   --background: 240 6% 9%;
   --foreground: 220 15% 94%;
   --border: 240 5% 21%;
-  --primary: 215 85% 60%;
+  --primary: 354 82% 66%;
   color-scheme: dark;
 }
 * {
@@ -48,7 +48,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #bf2033;
 }
 input,
 textarea,
@@ -200,7 +200,7 @@ tr:last-child td {
   text-align: left;
 }
 .navitem.selected {
-  color: #2563c4;
+  color: #bf2033;
   background: #edf3fd;
   font-weight: 600;
 }
@@ -286,7 +286,7 @@ tr:last-child td {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: #2563c4;
+  background: #bf2033;
   color: white;
   font-size: 20px;
   font-weight: 800;
@@ -333,7 +333,7 @@ input[type='checkbox'] {
   width: 16px;
   height: 16px;
   padding: 0;
-  accent-color: #2563c4;
+  accent-color: #bf2033;
 }
 details > summary {
   cursor: pointer;
@@ -413,4 +413,51 @@ dialog {
   .header-crumb {
     display: none;
   }
+}
+
+/* Corporate red actions and navy navigation, with readable dark-theme variants. */
+.sidebar {
+  background: #14243f;
+  color: #f5f7fc;
+}
+.sidebar .muted,
+.sidebar .eyebrow {
+  color: #b4c0d4;
+}
+.sidebar .surface {
+  background: #203451;
+}
+.sidebar .navitem {
+  color: #d1dbea;
+}
+.sidebar .navitem.selected,
+.dark .sidebar .navitem.selected {
+  background: #a81e31;
+  color: white;
+}
+.sidebar .navitem:hover {
+  background: #293c58;
+}
+.text-blue-600 {
+  color: #203c68;
+}
+.dark .text-blue-600 {
+  color: #a6c1ed;
+}
+.bg-blue-600 {
+  background-color: #bf2033;
+}
+.border-l-blue-600 {
+  border-left-color: #bf2033;
+}
+button,
+summary {
+  touch-action: manipulation;
+}
+[hidden] {
+  display: none !important;
+}
+
+.sidebar .text-blue-600 {
+  color: #d2def1;
 }

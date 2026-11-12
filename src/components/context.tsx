@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import type { Role, Status, Priority, AppealType } from '@prisma/client';
 export type Locale = 'ru' | 'kk' | 'en';
 export type User = {
@@ -9,6 +9,8 @@ export type User = {
   role: Role;
   departmentId: string;
   department?: { name: string };
+  deletedAt?: string | null;
+  guideDismissed?: boolean;
   blocked: boolean;
   mustChangePassword: boolean;
   locale: Locale;
@@ -44,6 +46,9 @@ export type Appeal = {
   createdAt: string;
   result: string | null;
   demoResult: boolean;
+  anonymous: boolean;
+  rating: number | null;
+  firstResponseAt: string | null;
   demo: boolean;
   version: number;
   recommendedNextStep?: string;
@@ -53,7 +58,7 @@ export type Appeal = {
   assignee: { id: string; name: string } | null;
   category: Category;
   department: { id: string; name: string };
-  attachments: { id: string; name: string; size: number }[];
+  attachments: { id: string; name: string; size: number; mime: string }[];
   comments: { id: string; body: string; createdAt: string; author: { id: string; name: string } }[];
   history: History[];
 };
@@ -120,21 +125,33 @@ export function useLoad<T>(endpoint: string) {
   const { api, revision, setError } = useApp();
   const [data, setData] = useState<T>();
   const [loading, setLoading] = useState(true);
+  const lastEndpoint = useRef(endpoint);
   useEffect(() => {
+    if (lastEndpoint.current !== endpoint) {
+      setData(undefined);
+      setLoading(true);
+      lastEndpoint.current = endpoint;
+    }
     let alive = true;
-    setLoading(true);
-    setData(undefined);
-    api<T>(endpoint)
-      .then((d) => {
-        if (alive) setData(d);
-      })
-      .catch((e) => {
-        if (alive) setError(e.message);
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
+    const load = () => {
+      api<T>(endpoint)
+        .then((d) => {
+          if (alive)
+            setData((previous) => (JSON.stringify(previous) === JSON.stringify(d) ? previous : d));
+        })
+        .catch((e) => {
+          if (alive) setError(e.message);
+        })
+        .finally(() => {
+          if (alive) setLoading(false);
+        });
+    };
+    load();
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') load();
+    }, 5000);
     return () => {
+      clearInterval(timer);
       alive = false;
     };
   }, [api, endpoint, revision, setError]);

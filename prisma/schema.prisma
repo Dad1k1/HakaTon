@@ -45,6 +45,8 @@ model User {
  role Role @default(EMPLOYEE)
  departmentId String
  department Department @relation(fields:[departmentId],references:[id])
+ deletedAt DateTime?
+ guideDismissed Boolean @default(false)
  blocked Boolean @default(false)
  mustChangePassword Boolean @default(true)
  sessionVersion Int @default(0)
@@ -87,6 +89,8 @@ model Appeal {
  recommendedNextStep String?
  sourceAuthor String?
  sourceAssignee String?
+ anonymous Boolean @default(false)
+ rating Int?
  demo Boolean @default(false)
  type AppealType
  categoryId String
@@ -154,8 +158,10 @@ model Notification {
  appeal Appeal @relation(fields:[appealId],references:[id])
  kind String
  readAt DateTime?
+ deliverAt DateTime @default(now())
  createdAt DateTime @default(now())
  @@index([userId,readAt])
+ @@index([userId,deliverAt])
 }
 model LoginAttempt {
  key String @id

@@ -30,7 +30,7 @@ export const authOptions: NextAuthOptions = {
         const user = await db.user.findUnique({ where: { login } });
         dummy ??= hash('dummy-verification-only', { type: argon2id });
         const ok = await verify(user?.passwordHash ?? (await dummy), password);
-        if (!ok || !user || user.blocked) return null;
+        if (!ok || !user || user.blocked || user.deletedAt) return null;
         await db.loginAttempt.deleteMany({ where: { key } });
         return { id: user.id, name: user.name, sessionVersion: user.sessionVersion };
       },

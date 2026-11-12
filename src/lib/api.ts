@@ -91,6 +91,7 @@ const safeUser = {
   name: true,
   role: true,
   departmentId: true,
+  deletedAt: true,
   blocked: true,
   mustChangePassword: true,
   locale: true,
@@ -101,7 +102,8 @@ export async function currentUser() {
   const s = session?.user as unknown as { id?: string; sessionVersion?: number } | undefined;
   if (!s?.id) fail(401, 'unauthorized');
   const u = await db.user.findUnique({ where: { id: s.id }, include: { department: true } });
-  if (!u || u.blocked || u.sessionVersion !== s.sessionVersion) fail(401, 'unauthorized');
+  if (!u || u.deletedAt || u.blocked || u.sessionVersion !== s.sessionVersion)
+    fail(401, 'unauthorized');
   return u;
 }
 export function filterWhere(u: User, q: URLSearchParams): Prisma.AppealWhereInput {
@@ -159,6 +161,7 @@ async function notify(tx: Prisma.TransactionClient, a: Appeal, actorId: string, 
   const managers = await tx.user.findMany({
     where: {
       blocked: false,
+      deletedAt: null,
       OR: [
         { role: 'ADMIN' },
         ...(a.assigneeId ? [] : [{ role: 'MANAGER' as const, departmentId: a.departmentId }]),
@@ -176,6 +179,7 @@ async function notify(tx: Prisma.TransactionClient, a: Appeal, actorId: string, 
     ...participants.map((p) => p.authorId),
     ...(a.assigneeId ? [a.assigneeId] : managers.map((m) => m.id)),
   ]);
+  if (kind === 'created') managers.forEach((m) => ids.add(m.id));
   ids.delete(actorId);
   await tx.notification.createMany({
     data: [...ids].map((userId) => ({ userId, appealId: a.id, kind })),
@@ -206,6 +210,7 @@ async function get(u: User, p: string[], q: URLSearchParams) {
       users: await db.user.findMany({
         where: {
           blocked: false,
+          deletedAt: null,
           ...(u.role === 'ADMIN'
             ? {}
             : u.role === 'MANAGER'
@@ -302,7 +307,7 @@ async function get(u: User, p: string[], q: URLSearchParams) {
   }
   if (p[0] === 'notifications')
     return db.notification.findMany({
-      where: { userId: u.id, appeal: visibility(u) },
+      where: { userId: u.id, deliverAt: { lte: new Date() }, appeal: visibility(u) },
       include: { appeal: { select: { id: true, number: true, title: true } } },
       orderBy: { createdAt: 'desc' },
       take: 100,
@@ -321,7 +326,7 @@ async function get(u: User, p: string[], q: URLSearchParams) {
       headers: {
         'Content-Type': f.mime,
         'Content-Length': String(f.size),
-        'Content-Disposition': `attachment; filename="download"; filename*=UTF-8''${encodeURIComponent(f.name)}`,
+        'Content-Disposition': `${q.get('inline') === '1' && ['image/png', 'image/jpeg'].includes(f.mime) ? 'inline' : 'attachment'}; filename="download"; filename*=UTF-8''${encodeURIComponent(f.name)}`,
         'Cache-Control': 'private, no-store',
       },
     });
@@ -360,6 +365,7 @@ async function post(u: User, p: string[], body: unknown) {
         name: str.max(120).optional(),
         locale: z.enum(['ru', 'kk', 'en']).optional(),
         theme: z.enum(['light', 'dark']).optional(),
+        guideDismissed: z.boolean().optional(),
       })
       .strict()
       .parse(body);
@@ -383,7 +389,7 @@ async function post(u: User, p: string[], body: unknown) {
   if (p[0] === 'notifications') {
     const b = z.object({ id: id.optional() }).parse(body);
     await db.notification.updateMany({
-      where: { userId: u.id, ...(b.id ? { id: b.id } : {}) },
+      where: { userId: u.id, deliverAt: { lte: new Date() }, ...(b.id ? { id: b.id } : {}) },
       data: { readAt: new Date() },
     });
     return { ok: true };
@@ -397,6 +403,7 @@ async function post(u: User, p: string[], body: unknown) {
         type: z.enum(['PROBLEM', 'SUGGESTION', 'PRAISE']),
         categoryId: id,
         priority,
+        anonymous: z.boolean().default(false),
       })
       .strict()
       .parse(body);
@@ -417,8 +424,24 @@ async function post(u: User, p: string[], body: unknown) {
       const exact = rules.find((r) => r.departmentId === u.departmentId),
         general = rules.find((r) => !r.departmentId);
       const assigneeId = routeCandidate(
-        exact ? { assigneeId: exact.assigneeId, blocked: exact.assignee.blocked } : undefined,
-        general ? { assigneeId: general.assigneeId, blocked: general.assignee.blocked } : undefined,
+        exact
+          ? {
+              assigneeId: exact.assigneeId,
+              blocked:
+                exact.assignee.blocked ||
+                exact.assignee.role === 'EMPLOYEE' ||
+                !!exact.assignee.deletedAt,
+            }
+          : undefined,
+        general
+          ? {
+              assigneeId: general.assigneeId,
+              blocked:
+                general.assignee.blocked ||
+                general.assignee.role === 'EMPLOYEE' ||
+                !!general.assignee.deletedAt,
+            }
+          : undefined,
         manager ?? undefined,
       );
       const sla = (await tx.setting.findUnique({ where: { key: 'sla' } }))?.value as
@@ -439,12 +462,101 @@ async function post(u: User, p: string[], body: unknown) {
       await tx.history.create({
         data: { appealId: a.id, actorId: u.id, action: 'created', changes: { assigneeId } },
       });
-      await notify(tx, a, u.id, 'assigned');
+      await notify(tx, a, u.id, 'created');
       return a;
     });
   }
   if (p[0] === 'appeals' && p[1]) {
     const a = await accessible(u, p[1]);
+    if (p[2] === 'reminder') {
+      const b = z
+        .object({
+          minutes: z
+            .number()
+            .int()
+            .refine((n) => [30, 60, 180, 1440, 10080].includes(n)),
+        })
+        .strict()
+        .parse(body);
+      return db.notification.create({
+        data: {
+          userId: u.id,
+          appealId: a.id,
+          kind: 'reminder',
+          deliverAt: new Date(Date.now() + b.minutes * 60000),
+        },
+      });
+    }
+    if (p[2] === 'complete') {
+      if (u.id !== a.authorId) fail(403, 'forbidden');
+      const b = z
+        .object({
+          version: z.number().int().positive(),
+          rating: z.number().int().min(1).max(5),
+          reason: str,
+        })
+        .strict()
+        .parse(body);
+      if (a.rating || !a.firstResponseAt) fail(400, 'invalidTransition');
+      return db.$transaction(async (tx) => {
+        await versioned(tx, a, b.version, {
+          status: terminal.includes(a.status) ? a.status : 'CLOSED',
+          completedAt: new Date(),
+          rating: b.rating,
+          result: a.result || b.reason,
+          demoResult: false,
+        });
+        await tx.history.create({
+          data: {
+            appealId: a.id,
+            actorId: u.id,
+            action: 'completedByAuthor',
+            changes: { rating: b.rating },
+            reason: b.reason,
+          },
+        });
+        await notify(tx, a, u.id, 'result');
+        return { ok: true };
+      });
+    }
+    if (p[2] === 'discussion-delete' || (p[2] === 'comments' && p[3])) {
+      const b = z
+        .object({
+          version: z.number().int().positive(),
+          action: z.enum(['edit', 'delete']).default('delete'),
+          body: str.optional(),
+        })
+        .strict()
+        .parse(body);
+      if (p[2] === 'discussion-delete' && u.role !== 'ADMIN') fail(403, 'forbidden');
+      if (p[3]) {
+        const c = await db.comment.findFirst({ where: { id: p[3], appealId: a.id } });
+        if (!c) fail(404, 'notFound');
+        if (c.authorId !== u.id && u.role !== 'ADMIN') fail(403, 'forbidden');
+        if (b.action === 'edit' && !b.body) fail(400, 'validation');
+      }
+      return db.$transaction(async (tx) => {
+        await versioned(tx, a, b.version, {});
+        if (!p[3]) await tx.comment.deleteMany({ where: { appealId: a.id } });
+        else if (b.action === 'edit')
+          await tx.comment.update({ where: { id: p[3] }, data: { body: b.body! } });
+        else await tx.comment.delete({ where: { id: p[3] } });
+        await tx.history.create({
+          data: {
+            appealId: a.id,
+            actorId: u.id,
+            action: !p[3]
+              ? 'discussionDeleted'
+              : b.action === 'edit'
+                ? 'commentEdited'
+                : 'commentDeleted',
+            changes: { commentId: p[3] || null },
+          },
+        });
+        await notify(tx, a, u.id, 'commented');
+        return { ok: true };
+      });
+    }
     if (p[2] === 'comments') {
       const b = z.object({ body: str, version: z.number().int().positive() }).parse(body);
       return db.$transaction(async (tx) => {
@@ -577,6 +689,7 @@ async function post(u: User, p: string[], body: unknown) {
       const b = z
         .object({
           blocked: z.boolean().optional(),
+          deleted: z.boolean().optional(),
           role: z.enum(['EMPLOYEE', 'RESPONSIBLE', 'MANAGER', 'ADMIN']).optional(),
           departmentId: id.optional(),
           name: str.max(120).optional(),
@@ -584,27 +697,58 @@ async function post(u: User, p: string[], body: unknown) {
         })
         .strict()
         .parse(body);
-      if (p[2] === u.id && (b.blocked || (b.role && b.role !== 'ADMIN'))) fail(400, 'selfBlock');
-      const { password, ...rest } = b;
+      if (p[2] === u.id && (b.deleted || b.blocked || (b.role && b.role !== 'ADMIN')))
+        fail(400, 'selfBlock');
+      const { password, deleted, ...rest } = b;
       return db.$transaction(async (tx) => {
         // Serialize administrator changes so two admins cannot concurrently remove the last active admin.
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(128392)`;
         const target = await tx.user.findUniqueOrThrow({ where: { id: p[2] } });
+        if (target.deletedAt && b.blocked === false && !('deleted' in b)) fail(400, 'validation');
         if (
           target.role === 'ADMIN' &&
           !target.blocked &&
-          (b.blocked || (b.role && b.role !== 'ADMIN')) &&
+          (b.deleted || b.blocked || (b.role && b.role !== 'ADMIN')) &&
           (await tx.user.count({ where: { role: 'ADMIN', blocked: false } })) <= 1
         )
           fail(400, 'lastAdmin');
+        if (b.deleted || b.blocked || b.role === 'EMPLOYEE') {
+          const assigned = await tx.appeal.findMany({
+            where: { assigneeId: target.id, status: { notIn: terminal } },
+          });
+          for (const a of assigned) {
+            await tx.appeal.update({
+              where: { id: a.id },
+              data: { assigneeId: null, version: { increment: 1 } },
+            });
+            await tx.history.create({
+              data: {
+                appealId: a.id,
+                actorId: u.id,
+                action: 'updated',
+                changes: { assigneeId: { from: target.id, to: null } },
+              },
+            });
+            await notify(tx, { ...a, assigneeId: null }, u.id, 'assigned');
+          }
+        }
         return tx.user.update({
           where: { id: p[2] },
           data: {
             ...rest,
+            ...(deleted !== undefined
+              ? { deletedAt: deleted ? new Date() : null, blocked: deleted }
+              : {}),
             ...(password
               ? { passwordHash: await hash(password, { type: argon2id }), mustChangePassword: true }
               : {}),
-            sessionVersion: { increment: 1 },
+            ...(password ||
+            b.role ||
+            b.departmentId ||
+            b.blocked !== undefined ||
+            deleted !== undefined
+              ? { sessionVersion: { increment: 1 } }
+              : {}),
           },
           select: safeUser,
         });
@@ -789,7 +933,48 @@ export async function handle(req: Request, segments: string[]) {
       );
     }
     if (result instanceof Response) return result;
-    return Response.json(result, { headers: { 'Cache-Control': 'private, no-store' } });
+    const anonymous = await db.appeal.findMany({
+      where: { AND: [visibility(u), { anonymous: true }] },
+      select: { id: true, authorId: true },
+    });
+    const aliases = new Map(anonymous.map((a) => [a.id, a.authorId]));
+    const mask = (value: unknown, appealId?: string): unknown => {
+      if (Array.isArray(value)) return value.map((v) => mask(v, appealId));
+      if (!value || typeof value !== 'object' || value instanceof Date) return value;
+      const v = value as Record<string, unknown>;
+      const aid =
+        typeof v.appealId === 'string'
+          ? v.appealId
+          : typeof v.id === 'string' && aliases.has(v.id)
+            ? v.id
+            : appealId;
+      const author = aid ? aliases.get(aid) : undefined;
+      const out = Object.fromEntries(Object.entries(v).map(([k, val]) => [k, mask(val, aid)]));
+      if (author) {
+        const label =
+          { ru: 'Анонимный сотрудник', kk: 'Анонимді қызметкер', en: 'Anonymous employee' }[
+            u.locale
+          ] || 'Anonymous employee';
+        if (v.authorId === author) {
+          out.authorId = u.id === author ? author : '';
+          if (v.author) out.author = { id: u.id === author ? author : '', name: label };
+        }
+        if (v.actorId === author && v.actor) {
+          out.actorId = '';
+          out.actor = { name: label };
+        }
+        if (v.assigneeId === author) {
+          out.assigneeId = u.id === author ? author : '';
+          if (v.assignee) out.assignee = { id: u.id === author ? author : '', name: label };
+        }
+        if (v.anonymous) {
+          out.sourceAssignee = null;
+          out.sourceAuthor = null;
+        }
+      }
+      return out;
+    };
+    return Response.json(mask(result), { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (e) {
     if (e instanceof ApiError) return Response.json({ error: e.message }, { status: e.status });
     if (e instanceof z.ZodError || e instanceof SyntaxError)

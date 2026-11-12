@@ -55,6 +55,7 @@ export function PasswordForm() {
 export function SettingsScreen() {
   const t = useTranslations();
   const { user, api, notice, setError, refresh, locale, setLocale, theme, setTheme } = useApp();
+  const [section, setSection] = useState('profile');
   async function profile(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     try {
@@ -69,8 +70,21 @@ export function SettingsScreen() {
   return (
     <>
       <h1 className="page-title mb-7">{t('settings')}</h1>
-      <div className="grid lg:grid-cols-2 gap-6">
-        <section className="panel p-6">
+      <div className="flex gap-2 flex-wrap mb-6">
+        {['profile', 'changePassword', ...(user.role === 'ADMIN' ? ['administration'] : [])].map(
+          (key) => (
+            <Button
+              key={key}
+              variant={section === key ? 'default' : 'outline'}
+              onClick={() => setSection(key)}
+            >
+              {t(key)}
+            </Button>
+          ),
+        )}
+      </div>
+      <div className="max-w-3xl">
+        <section hidden={section !== 'profile'} className="panel p-6">
           <h2 className="font-semibold mb-5">{t('profile')}</h2>
           <form onSubmit={profile} className="space-y-4">
             <div>
@@ -122,12 +136,16 @@ export function SettingsScreen() {
             </div>
           </div>
         </section>
-        <section className="panel p-6">
+        <section hidden={section !== 'changePassword'} className="panel p-6">
           <h2 className="font-semibold mb-5">{t('changePassword')}</h2>
           <PasswordForm />
         </section>
       </div>
-      {user.role === 'ADMIN' && <Admin />}
+      {user.role === 'ADMIN' && (
+        <div hidden={section !== 'administration'}>
+          <Admin />
+        </div>
+      )}
     </>
   );
 }
@@ -148,6 +166,7 @@ function Admin() {
   const { data: users } = useLoad<User[]>('admin/users');
   const { data: config } = useLoad<Config>('admin/config');
   const [tab, setTab] = useState('users'),
+    [showDeleted, setShowDeleted] = useState(false),
     [edit, setEdit] = useState<User | null>(null),
     [busy, setBusy] = useState(false);
   async function mutate(p: string, body: unknown) {
@@ -270,40 +289,76 @@ function Admin() {
                   </div>
                 </form>
               </div>
+              <label className="flex items-center gap-2">
+                <input
+                  className="!w-auto"
+                  type="checkbox"
+                  checked={showDeleted}
+                  onChange={(e) => setShowDeleted(e.target.checked)}
+                />
+                {t('showDeleted')}
+              </label>
               <div className="panel divide-y">
-                {users.map((u) => (
-                  <div className="p-4 flex flex-wrap gap-4 justify-between items-center" key={u.id}>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {u.name} <span className="badge ml-2">{t(`roles.${u.role}`)}</span>
-                      </p>
-                      <p className="text-xs muted mt-2">
-                        {u.login} · {departmentName(u.department?.name || '', locale)} ·{' '}
-                        {t(u.blocked ? 'blocked' : 'active')}
-                      </p>
+                {users
+                  .filter((u) => showDeleted || !u.deletedAt)
+                  .map((u) => (
+                    <div
+                      className="p-4 flex flex-wrap gap-4 justify-between items-center"
+                      key={u.id}
+                    >
+                      <div>
+                        <p className="text-sm font-medium">
+                          {u.name} <span className="badge ml-2">{t(`roles.${u.role}`)}</span>
+                        </p>
+                        <p className="text-xs muted mt-2">
+                          {u.login} · {departmentName(u.department?.name || '', locale)} ·{' '}
+                          {t(u.deletedAt ? 'deleted' : u.blocked ? 'blocked' : 'active')}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={!!u.deletedAt}
+                          onClick={() => {
+                            setEdit(u);
+                            setTimeout(
+                              () => document.getElementById('admin-user-name')?.focus(),
+                              0,
+                            );
+                          }}
+                        >
+                          {t('editUser')}
+                        </Button>
+                        <Button
+                          disabled={busy}
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            mutate(
+                              'users/' + u.id,
+                              u.deletedAt ? { deleted: false } : { blocked: !u.blocked },
+                            )
+                          }
+                        >
+                          {t(u.deletedAt ? 'restoreUser' : u.blocked ? 'unblock' : 'block')}
+                        </Button>
+                        {!u.deletedAt && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => {
+                              if (window.confirm(t('confirmDeleteUser')))
+                                void mutate('users/' + u.id, { deleted: true });
+                            }}
+                          >
+                            {t('deleteUser')}
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEdit(u);
-                          document.getElementById('admin-user-name')?.focus();
-                        }}
-                      >
-                        {t('editUser')}
-                      </Button>
-                      <Button
-                        disabled={busy}
-                        size="sm"
-                        variant="outline"
-                        onClick={() => mutate('users/' + u.id, { blocked: !u.blocked })}
-                      >
-                        {t(u.blocked ? 'unblock' : 'block')}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           )}

@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { NextIntlClientProvider, useTranslations } from 'next-intl';
 import {
   ArrowRight,
@@ -80,7 +80,9 @@ export function Workspace() {
       localStorage.setItem('locale', l);
       document.documentElement.lang = l;
       if (user && !user.mustChangePassword)
-        void api('profile', { locale: l }).catch((e) => setError(e.message));
+        void api<User>('profile', { locale: l })
+          .then(setUser)
+          .catch((e) => setError(e.message));
     },
     [user, api],
   );
@@ -90,7 +92,9 @@ export function Workspace() {
       localStorage.setItem('theme', t);
       document.documentElement.classList.toggle('dark', t === 'dark');
       if (user && !user.mustChangePassword)
-        void api('profile', { theme: t }).catch((e) => setError(e.message));
+        void api<User>('profile', { theme: t })
+          .then(setUser)
+          .catch((e) => setError(e.message));
     },
     [user, api],
   );
@@ -112,7 +116,13 @@ export function Workspace() {
   }, [api]);
   useEffect(() => {
     void loadUser();
-  }, [loadUser, revision]);
+  }, [loadUser]);
+  useEffect(() => {
+    if (revision)
+      void api<User>('me')
+        .then(setUser)
+        .catch(() => {});
+  }, [api, revision]);
   useEffect(() => {
     if (user && !user.mustChangePassword)
       api<Lookups>('lookups')
@@ -335,15 +345,28 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
   const [menu, setMenu] = useState(false),
     [newOpen, setNewOpen] = useState(false),
     [notesOpen, setNotesOpen] = useState(false),
-    [notes, setNotes] = useState<Notification[]>([]);
+    [notes, setNotes] = useState<Notification[]>([]),
+    [toast, setToast] = useState<Notification | null>(null),
+    [guide, setGuide] = useState(
+      () => !user.guideDismissed && sessionStorage.getItem('guide-seen:' + user.id) !== '1',
+    ),
+    [dontShow, setDontShow] = useState(false);
+  const seen = useRef<Set<string> | null>(null);
   useEffect(() => {
     if (user.mustChangePassword) return;
     const load = () =>
       api<Notification[]>('notifications')
-        .then(setNotes)
+        .then((items) => {
+          if (seen.current) {
+            const fresh = items.find((n) => !n.readAt && !seen.current!.has(n.id));
+            if (fresh) setToast(fresh);
+          }
+          seen.current = new Set(items.map((n) => n.id));
+          setNotes(items);
+        })
         .catch(() => {});
     void load();
-    const timer = setInterval(load, 30000);
+    const timer = setInterval(load, 5000);
     return () => clearInterval(timer);
   }, [api, revision, user.mustChangePassword]);
   const nav = [
@@ -391,10 +414,6 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           ))}
         </nav>
         <div className="mt-auto p-4">
-          <div className="surface p-4 rounded-lg mb-5">
-            <MessageSquare size={20} className="text-blue-600 mb-3" />
-            <p className="text-xs leading-5 muted">{t('overviewText')}</p>
-          </div>
           <div className="flex gap-3 items-center border-t pt-5">
             <div className="rounded-full surface w-9 h-9 grid place-items-center font-semibold text-blue-600">
               {user.name[0]}
@@ -498,6 +517,69 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           )}
         </main>
       </div>
+      {guide && !user.mustChangePassword && (
+        <div className="overlay">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="guide-title"
+            className="dialog p-6 max-w-lg"
+          >
+            <h2 id="guide-title" className="text-xl font-semibold mb-4">
+              {t('guideTitle')}
+            </h2>
+            <ol className="list-decimal pl-5 space-y-3 text-sm">
+              <li>{t('guideCreate')}</li>
+              <li>{t('guideDiscuss')}</li>
+              <li>{t('guideFinish')}</li>
+            </ol>
+            <label className="flex gap-2 items-center mt-6">
+              <input
+                type="checkbox"
+                className="!w-auto"
+                checked={dontShow}
+                onChange={(e) => setDontShow(e.target.checked)}
+              />
+              {t('dontShow')}
+            </label>
+            <Button
+              className="mt-4"
+              onClick={async () => {
+                try {
+                  if (dontShow) await api('profile', { guideDismissed: true });
+                  sessionStorage.setItem('guide-seen:' + user.id, '1');
+                  setGuide(false);
+                } catch {}
+              }}
+            >
+              {t('understood')}
+            </Button>
+          </section>
+        </div>
+      )}
+      {toast && (
+        <div role="status" className="fixed bottom-5 right-5 z-50 panel shadow-xl p-4 max-w-sm">
+          <button
+            aria-label={t('close')}
+            className="float-right ml-4"
+            onClick={() => setToast(null)}
+          >
+            <X size={16} />
+          </button>
+          <button
+            className="text-left"
+            onClick={() => {
+              navigate({ view: 'appeals', id: toast.appeal.id });
+              setToast(null);
+            }}
+          >
+            <strong>{t(`events.${toast.kind}`)}</strong>
+            <p className="text-sm mt-2">
+              {num(toast.appeal.number)} · {toast.appeal.title}
+            </p>
+          </button>
+        </div>
+      )}
       {newOpen && <NewAppeal close={() => setNewOpen(false)} />}{' '}
       {notesOpen && (
         <div className="fixed z-50 top-[64px] right-3 md:right-8 w-[min(400px,calc(100vw-24px))] panel shadow-xl max-h-[80vh] overflow-auto">

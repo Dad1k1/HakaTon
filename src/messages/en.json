@@ -153,7 +153,7 @@
     "PRAISE": "Positive feedback"
   },
   "events": {
-    "created": "Appeal created",
+    "created": "New request",
     "updated": "Appeal updated",
     "commented": "Comment added",
     "assigned": "Appeal assigned",
@@ -161,7 +161,12 @@
     "status": "Status changed",
     "result": "Resolution recorded",
     "filesAdded": "Attachments added",
-    "demoImported": "Demo data imported"
+    "demoImported": "Demo data imported",
+    "reminder": "Reminder",
+    "commentEdited": "Message edited",
+    "commentDeleted": "Message deleted",
+    "discussionDeleted": "Discussion deleted",
+    "completedByAuthor": "Closed by author"
   },
   "errors": {
     "invalidLogin": "Invalid credentials or sign-in temporarily limited.",
@@ -184,5 +189,37 @@
     "serverError": "Request failed. Please try again later."
   },
   "awaitingResponse": "Awaiting response",
-  "awaitingResponseHint": "No first substantive response"
+  "awaitingResponseHint": "No first substantive response",
+  "anonymous": "Submit anonymously",
+  "anonymousHint": "Your name is hidden from participants. Your department is visible; the system retains ownership for access. Avoid identifying yourself in text or files.",
+  "editMessage": "Edit message",
+  "deleteDiscussion": "Delete discussion",
+  "confirmDiscussionDelete": "Delete all discussion messages? History and attachments will be retained.",
+  "confirmMessageDelete": "Delete this message?",
+  "dropFiles": "Drop files here or paste with Ctrl+V. Up to 5 files, 10 MB each.",
+  "remindAfter": "Remind me in…",
+  "setReminder": "Set reminder",
+  "reminderSaved": "Reminder scheduled",
+  "satisfied": "Satisfied with the response?",
+  "rating": "Response rating",
+  "closeOwn": "Close and rate request",
+  "guideTitle": "Getting started",
+  "guideCreate": "Choose New request, select a category and describe your question.",
+  "guideDiscuss": "Find replies and files in the request discussion. Changes appear automatically; the bell shows notifications.",
+  "guideFinish": "When satisfied, close your request and rate the response. Set a reminder to return later.",
+  "dontShow": "Don’t show again",
+  "understood": "Got it",
+  "moreOptions": "Assignment, priority and deadline",
+  "deleteUser": "Delete user",
+  "restoreUser": "Restore user",
+  "deleted": "Deleted",
+  "confirmDeleteUser": "Delete this user? Access will be disabled and open assignments returned to the queue. The account can be restored.",
+  "showDeleted": "Show deleted users",
+  "intervals": {
+    "30": "30 minutes",
+    "60": "1 hour",
+    "180": "3 hours",
+    "1440": "24 hours",
+    "10080": "7 days"
+  }
 }
