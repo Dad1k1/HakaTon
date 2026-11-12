@@ -1729,15 +1729,46 @@ html {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-/* A quiet, mechanical camera illustration for the sign-in scene. */
-.login-info {
-  gap: 20px;
-  padding: clamp(28px, 4vw, 56px);
-  background: #eeefeb;
+/* Full-bleed industrial product scene, with independent readable content layers. */
+.login-grid {
+  position: relative;
+  isolation: isolate;
   overflow: hidden;
+  background: #e8edf0;
 }
+.dark .login-grid {
+  background: #10131b;
+}
+.login-info,
 .dark .login-info {
-  background: #111412;
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  gap: 28px;
+  padding: clamp(28px, 4vw, 56px);
+}
+.login-grid > main {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(90deg, #f7f9fa45, #f7f9fadc 35%, #f7f9faf2);
+}
+.dark .login-grid > main {
+  background: linear-gradient(90deg, #10131b10, #10131b95 35%, #10131bd9);
+}
+.login-grid::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, #eef2f4d9 0%, #eef2f420 35%, transparent 60%),
+    linear-gradient(0deg, #eef2f4e6, transparent 75%);
+}
+.dark .login-grid::after {
+  background:
+    linear-gradient(90deg, #10131bc4 0%, #10131b10 36%, transparent 64%),
+    linear-gradient(0deg, #10131bf2, #10131b00 85%);
 }
 .login-copy h1 {
   font-size: clamp(26px, 2.6vw, 36px);
@@ -1752,110 +1783,107 @@ html {
 .tracking-camera {
   --camera-x: 0;
   --camera-y: 0;
-  --camera-shell-light: #f9faf7;
-  --camera-shell-dark: #c6cbc5;
-  --camera-outline: #9aa69c;
-  --camera-hood: #e6eae3;
-  --camera-face: #34423c;
-  position: relative;
   pointer-events: none;
   user-select: none;
-  width: 100%;
-  perspective: 900px;
+  perspective: 1400px;
 }
-.dark .tracking-camera {
-  --camera-shell-light: #737f76;
-  --camera-shell-dark: #343f37;
-  --camera-outline: #89968c;
-  --camera-hood: #59675c;
-  --camera-face: #17231d;
-}
-.tracking-camera svg {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-.camera-desktop {
-  flex: 1;
-  min-height: 210px;
-  max-height: 330px;
+.camera-background {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
 }
 .camera-head {
-  transform-box: fill-box;
-  transform-origin: 40% 72%;
-  transform: translate(calc(var(--camera-x) * 12px), calc(var(--camera-y) * 5px))
-    rotate(calc(var(--camera-x) * 8deg + var(--camera-y) * -4deg));
-  will-change: transform;
-}
-.camera-lens {
-  transform: translate(calc(var(--camera-x) * 7px), calc(var(--camera-y) * 5px));
-}
-.camera-pupil {
-  transform: translate(calc(var(--camera-x) * 3px), calc(var(--camera-y) * 3px));
-}
-.camera-shadow {
-  fill: #1c37251a;
-  transform-origin: center;
-  transform: scaleX(calc(1 + var(--camera-x) * 0.08));
-}
-.camera-orbit {
   position: absolute;
-  left: 50%;
-  top: 47%;
-  width: 230px;
-  height: 230px;
-  border: 1px solid #80918220;
+  top: -3vh;
+  left: -3vw;
+  width: 112vw;
+  max-width: 1850px;
+  transform-origin: 38% 55%;
+  transform: translate3d(calc(var(--camera-x) * 16px), calc(var(--camera-y) * 10px), 0)
+    rotateX(calc(var(--camera-y) * -6deg)) rotateY(calc(var(--camera-x) * 9deg));
+  will-change: transform;
+  opacity: 0.65;
+}
+.dark .camera-head {
+  opacity: 0.86;
+}
+.camera-head img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 32px 35px #05080f50);
+}
+.camera-glass-light {
+  position: absolute;
+  left: 30%;
+  top: 38%;
+  width: 16%;
+  height: 33%;
   border-radius: 50%;
-  transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse at 30% 20%, #9cb7ce18, transparent 60%);
+  transform: translate(calc(var(--camera-x) * 9px), calc(var(--camera-y) * 7px));
 }
-.orbit-two {
-  width: 300px;
-  height: 300px;
-  border-style: dashed;
-  opacity: 0.55;
+.login-grid input {
+  background: #ffffffad;
+  border: 1px solid #c9d0d5;
 }
-.camera-mobile {
-  display: none;
+.dark .login-grid input {
+  background: #0f131da6;
+  border-color: #505a6b;
+}
+.login-grid .primary-action {
+  background: #d7364c;
+  color: white;
+  box-shadow: 0 6px 24px #d7364c20;
+}
+.login-grid .surface {
+  background: #ffffff70;
+}
+.dark .login-grid .surface {
+  background: #151b26b3;
 }
 @media (max-width: 767px) {
-  .camera-mobile {
-    display: block;
-    height: 150px;
-    margin: 0 auto 18px;
-    max-width: 260px;
+  .camera-head {
+    width: 170vw;
+    left: -42vw;
+    top: 1vh;
+    opacity: 0.3;
   }
-  .camera-mobile .camera-orbit {
-    width: 130px;
-    height: 130px;
+  .dark .camera-head {
+    opacity: 0.48;
   }
-  .camera-mobile .orbit-two {
-    width: 175px;
-    height: 175px;
+  .login-grid > main {
+    background: linear-gradient(0deg, #f7f9faf2, #f7f9fab8);
+  }
+  .dark .login-grid > main {
+    background: linear-gradient(0deg, #10131bf5, #10131b94);
+  }
+  .login-grid > main > div:last-child {
+    padding-top: 120px;
   }
 }
 @media (hover: none) and (prefers-reduced-motion: no-preference) {
   .camera-head {
-    animation: camera-idle 9s ease-in-out infinite;
+    animation: camera-idle 12s ease-in-out infinite;
   }
 }
 @keyframes camera-idle {
   0%,
   100% {
-    transform: rotate(-3deg);
+    transform: rotateY(-3deg);
   }
   50% {
-    transform: rotate(4deg);
+    transform: rotateY(3deg);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .camera-head {
-    animation: none !important;
     transform: none;
+    animation: none !important;
     will-change: auto;
   }
-  .camera-lens,
-  .camera-pupil {
+  .camera-glass-light {
     transform: none;
   }
 }
