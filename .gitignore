@@ -10,3 +10,9 @@ test-results/
 *.tsbuildinfo
 
 backups/
+
+# Android demo build outputs and local SDK
+mobile/dist/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/**/build/
