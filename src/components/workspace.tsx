@@ -36,6 +36,7 @@ import { GuidedTour } from './guided-tour';
 import { NotificationCenter } from './notifications';
 import { SettingsScreen, PasswordForm } from './settings';
 import { signOutLocally } from '@/lib/session-client';
+import { TrackingCamera } from './tracking-camera';
 import { BrandLogo } from './ui/brand-logo';
 import { Avatar } from './ui/avatar';
 import { MotionPills } from './ui/motion-pills';
@@ -275,7 +276,8 @@ function Login({
         <div className="flex items-center gap-3">
           <BrandLogo />
         </div>
-        <div className="max-w-md">
+        <TrackingCamera className="camera-desktop" />
+        <div className="max-w-md login-copy">
           <span className="eyebrow">{t('workspace')}</span>
           <h1 className="text-4xl leading-tight font-semibold tracking-tight mt-5">
             {t('tagline')}
@@ -299,6 +301,7 @@ function Login({
             <div className="mb-7 md:hidden">
               <BrandLogo />
             </div>
+            <TrackingCamera className="camera-mobile" />
             <p className="eyebrow mb-3">{t('brand')}</p>
             <h2 className="text-2xl font-semibold tracking-tight">{t('signIn')}</h2>
             <p className="muted mt-2 text-sm">{t('product')}</p>
