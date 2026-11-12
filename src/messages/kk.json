@@ -274,5 +274,9 @@
     }
   },
   "collapseSidebar": "Панельді жинау",
-  "expandSidebar": "Панельді ашу"
+  "expandSidebar": "Панельді ашу",
+  "uploadAvatar": "Аватар жүктеу",
+  "avatarHint": "PNG немесе JPEG, 5 МБ дейін",
+  "removeAvatar": "Аватарды жою",
+  "previewImage": "Суретті ашу"
 }

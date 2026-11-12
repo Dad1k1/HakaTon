@@ -41,6 +41,7 @@ model User {
  id String @id @default(cuid())
  login String @unique
  name String
+ avatar String?
  passwordHash String
  role Role @default(EMPLOYEE)
  departmentId String

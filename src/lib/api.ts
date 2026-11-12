@@ -81,13 +81,14 @@ const status = z.enum([
   'CLOSED',
 ]);
 const include = {
-  author: { select: { id: true, name: true } },
+  author: { select: { id: true, name: true, avatar: true } },
   assignee: { select: { id: true, name: true } },
   category: true,
   department: true,
 } satisfies Prisma.AppealInclude;
 const safeUser = {
   id: true,
+  avatar: true,
   login: true,
   name: true,
   role: true,
@@ -250,7 +251,7 @@ async function get(u: User, p: string[], q: URLSearchParams) {
         ...include,
         attachments: { select: { id: true, name: true, size: true, mime: true } },
         comments: {
-          include: { author: { select: { id: true, name: true } } },
+          include: { author: { select: { id: true, name: true, avatar: true } } },
           orderBy: { createdAt: 'asc' },
         },
         history: { include: { actor: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
@@ -364,6 +365,7 @@ async function post(u: User, p: string[], body: unknown) {
   if (p[0] === 'profile') {
     const b = z
       .object({
+        avatar: z.string().max(80000).nullable().optional(),
         name: str.max(120).optional(),
         locale: z.enum(['ru', 'kk', 'en']).optional(),
         theme: z.enum(['light', 'dark']).optional(),
@@ -371,6 +373,19 @@ async function post(u: User, p: string[], body: unknown) {
       })
       .strict()
       .parse(body);
+    if (b.avatar) {
+      const match = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/]+={0,2})$/.exec(b.avatar);
+      if (!match) fail(400, 'fileType');
+      const bytes = Buffer.from(match[2], 'base64');
+      if (!bytes.length || bytes.length > 60000) fail(400, 'fileSize');
+      let detected;
+      try {
+        detected = await fileTypeFromBuffer(bytes);
+      } catch {
+        fail(400, 'fileType');
+      }
+      if (detected?.mime !== 'image/' + match[1]) fail(400, 'fileType');
+    }
     return publicUser(await db.user.update({ where: { id: u.id }, data: b }));
   }
   if (p[0] === 'password') {

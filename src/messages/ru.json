@@ -274,5 +274,9 @@
     }
   },
   "collapseSidebar": "Свернуть панель",
-  "expandSidebar": "Развернуть панель"
+  "expandSidebar": "Развернуть панель",
+  "uploadAvatar": "Загрузить аватар",
+  "avatarHint": "PNG или JPEG, до 5 МБ",
+  "removeAvatar": "Удалить аватар",
+  "previewImage": "Открыть изображение"
 }

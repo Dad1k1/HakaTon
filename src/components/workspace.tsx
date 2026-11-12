@@ -36,6 +36,7 @@ import { GuidedTour } from './guided-tour';
 import { NotificationCenter } from './notifications';
 import { SettingsScreen, PasswordForm } from './settings';
 import { signOutLocally } from '@/lib/session-client';
+import { Avatar } from './ui/avatar';
 import { MotionPills } from './ui/motion-pills';
 const messages = { ru, kk, en };
 export function Workspace() {
@@ -441,7 +442,7 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           )}
           <div className="flex gap-3 items-center border-t pt-5">
             <div className="rounded-full surface w-9 h-9 grid place-items-center font-semibold text-blue-600">
-              {user.name[0]}
+              <Avatar person={user} />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold truncate">{user.name}</p>

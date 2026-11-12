@@ -55,3 +55,6 @@ export const Moon = icon('M18 3A10 10 0 1 0 21 17C10 21 6 9 18 3z');
 export const CircleHelp = icon('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M9 9c0-4 7-3 6 1l-3 3v1m0 3v.1');
 export const Compass = icon('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20m4 6-2 6-6 2 2-6z');
 export const ChartNoAxesCombined = icon('M3 3v18h18M7 17v-4m5 4V9m5 8V5M6 9l5-4 4 1 5-4');
+
+export const Pencil = icon('M4 17 16 5l3 3L7 20H4zM14 7l3 3');
+export const Trash = icon('M4 6h16M9 3h6M6 6l1 15h10l1-15M10 10v7m4-7v7');

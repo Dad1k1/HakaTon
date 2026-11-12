@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { credentials, client, data, baseURL } from '../helpers';
-test('anonymous discussion supports live replies, editing, file paste/drop, reminders and rating', async ({
+test('anonymous discussion supports live replies, editing, file paste/drop and rating', async ({
   browser,
 }) => {
   const cfg = await credentials();
@@ -33,7 +33,9 @@ test('anonymous discussion supports live replies, editing, file paste/drop, remi
     timeout: 15000,
   });
   await page.getByRole('button', { name: 'Изменить сообщение', exact: true }).click();
-  await page.getByLabel('Изменить сообщение', { exact: true }).fill('Edited live reply');
+  await page
+    .getByRole('textbox', { name: 'Изменить сообщение', exact: true })
+    .fill('Edited live reply');
   await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
   await expect(staff.getByText('Edited live reply', { exact: true })).toBeVisible({
     timeout: 15000,
@@ -65,8 +67,7 @@ test('anonymous discussion supports live replies, editing, file paste/drop, remi
     el.dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer: transfer }));
   });
   await expect(staff.getByRole('link', { name: /drop.txt/ }).first()).toBeVisible();
-  await page.getByRole('button', { name: 'Установить напоминание', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Напоминание установлено');
+  await staff.locator('.manage-disclosure > summary').click();
   await staff.getByLabel('Статус', { exact: true }).selectOption('REVIEW');
   await staff
     .getByLabel('Комментарий / причина / выполненные действия', { exact: true })

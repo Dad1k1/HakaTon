@@ -1,6 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { AvatarUpload } from './avatar-upload';
+import { Avatar } from './ui/avatar';
 import { Plus, Shield, Users } from './ui/icons';
 import { departmentName } from './context';
 import { Button } from './ui/button';
@@ -87,6 +89,7 @@ export function SettingsScreen() {
       <div className="settings-layout">
         <section hidden={section !== 'profile'} className="panel p-6 profile-panel">
           <h2 className="font-semibold mb-5">{t('profile')}</h2>
+          <AvatarUpload />
           <form onSubmit={profile} className="space-y-4">
             <div>
               <label htmlFor="profile-name">{t('name')}</label>
@@ -142,7 +145,9 @@ export function SettingsScreen() {
           <PasswordForm />
         </section>
         <aside className="panel settings-summary" hidden={section === 'administration'}>
-          <div className="profile-avatar">{user.name.slice(0, 1)}</div>
+          <div className="profile-avatar">
+            <Avatar person={user} />
+          </div>
           <h2 className="text-xl font-semibold">{user.name}</h2>
           <p className="muted mt-2">{t(`roles.${user.role}`)}</p>
           <dl className="space-y-5 mt-8">

@@ -274,5 +274,9 @@
     }
   },
   "collapseSidebar": "Collapse sidebar",
-  "expandSidebar": "Expand sidebar"
+  "expandSidebar": "Expand sidebar",
+  "uploadAvatar": "Upload avatar",
+  "avatarHint": "PNG or JPEG, up to 5 MB",
+  "removeAvatar": "Remove avatar",
+  "previewImage": "Preview image"
 }

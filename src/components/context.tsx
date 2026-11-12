@@ -4,6 +4,7 @@ import type { Role, Status, Priority, AppealType } from '@prisma/client';
 export type Locale = 'ru' | 'kk' | 'en';
 export type User = {
   id: string;
+  avatar?: string | null;
   login: string;
   name: string;
   role: Role;
@@ -54,12 +55,17 @@ export type Appeal = {
   recommendedNextStep?: string;
   sourceAuthor?: string;
   sourceAssignee?: string;
-  author: { id: string; name: string };
+  author: { id: string; name: string; avatar?: string | null };
   assignee: { id: string; name: string } | null;
   category: Category;
   department: { id: string; name: string };
   attachments: { id: string; name: string; size: number; mime: string }[];
-  comments: { id: string; body: string; createdAt: string; author: { id: string; name: string } }[];
+  comments: {
+    id: string;
+    body: string;
+    createdAt: string;
+    author: { id: string; name: string; avatar?: string | null };
+  }[];
   history: History[];
 };
 export type History = {

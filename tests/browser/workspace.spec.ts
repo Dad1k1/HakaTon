@@ -171,6 +171,7 @@ test('responsible completes clarification flow in the browser and sees notificat
   ).json();
   await login(page, 'responsible');
   await page.goto('/?view=appeals&id=' + created.id);
+  await page.locator('.manage-disclosure > summary').click();
   await expect(
     page.getByRole('heading', { name: 'Рассмотрение обращения', exact: true }),
   ).toBeVisible();
@@ -199,6 +200,7 @@ test('responsible completes clarification flow in the browser and sees notificat
     body: 'Procurement workflow.',
   });
   await page.reload();
+  await page.locator('.manage-disclosure > summary').click();
   await save('IN_PROGRESS');
   await save('IMPLEMENTED', 'Updated the procurement template.');
   await expect(page.getByRole('heading', { name: 'Итоговое решение', exact: true })).toBeVisible();
