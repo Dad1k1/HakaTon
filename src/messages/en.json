@@ -189,7 +189,9 @@
     "serverError": "Request failed. Please try again later.",
     "telegramUnavailable": "Telegram is unavailable. Please try again later.",
     "telegramWorkerUnavailable": "The bot is not accepting commands. Check Telegram status in settings and start the telegram service.",
-    "telegramNotConnected": "Connect Telegram first."
+    "telegramNotConnected": "Connect Telegram first.",
+    "rateLimited": "Too many requests. Try again later.",
+    "requestTimeout": "Upload timed out. Try again."
   },
   "awaitingResponse": "Awaiting response",
   "awaitingResponseHint": "No first substantive response",

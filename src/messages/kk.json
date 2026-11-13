@@ -189,7 +189,9 @@
     "serverError": "Сұрауды орындау мүмкін болмады. Кейін қайталаңыз.",
     "telegramUnavailable": "Telegram қолжетімсіз. Кейінірек қайталаңыз.",
     "telegramWorkerUnavailable": "Бот командаларды қабылдамайды. Баптаулардан Telegram күйін тексеріп, telegram қызметін іске қосыңыз.",
-    "telegramNotConnected": "Алдымен Telegram қосыңыз."
+    "telegramNotConnected": "Алдымен Telegram қосыңыз.",
+    "rateLimited": "Сұраулар тым көп. Кейінірек қайталаңыз.",
+    "requestTimeout": "Жүктеу уақыты аяқталды. Қайта жіберіңіз."
   },
   "awaitingResponse": "Жауап күтуде",
   "awaitingResponseHint": "Алғашқы мазмұнды жауапсыз",

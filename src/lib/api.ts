@@ -10,6 +10,12 @@ import { isIPv4 } from 'node:net';
 import { db } from './db';
 import { createTelegramLink, telegramCall, TelegramError } from './telegram';
 import { getTelegramWorkerStatus } from './telegram-status';
+import {
+  readLimitedBody,
+  BodyLimitError,
+  BodyTimeoutError,
+  safeRasterDimensions,
+} from './security';
 import { authOptions } from './auth';
 import {
   visibility,
@@ -339,6 +345,7 @@ async function get(u: User, p: string[], q: URLSearchParams) {
       headers: {
         'Content-Type': f.mime,
         'Content-Length': String(f.size),
+        'Content-Security-Policy': "default-src 'none'; sandbox",
         'Content-Disposition': `${q.get('inline') === '1' && ['image/png', 'image/jpeg'].includes(f.mime) ? 'inline' : 'attachment'}; filename="download"; filename*=UTF-8''${encodeURIComponent(f.name)}`,
         'Cache-Control': 'private, no-store',
       },
@@ -434,7 +441,11 @@ async function post(u: User, p: string[], body: unknown) {
       } catch {
         fail(400, 'fileType');
       }
-      if (detected?.mime !== 'image/' + match[1]) fail(400, 'fileType');
+      if (
+        detected?.mime !== 'image/' + match[1] ||
+        !safeRasterDimensions(bytes, detected.mime, 1048576)
+      )
+        fail(400, 'fileType');
     }
     return publicUser(await db.user.update({ where: { id: u.id }, data: b }));
   }
@@ -485,7 +496,7 @@ async function post(u: User, p: string[], body: unknown) {
         include: { assignee: true },
       });
       const manager = await tx.user.findFirst({
-        where: { departmentId: u.departmentId, role: 'MANAGER', blocked: false },
+        where: { departmentId: u.departmentId, role: 'MANAGER', blocked: false, deletedAt: null },
         orderBy: { id: 'asc' },
       });
       const exact = rules.find((r) => r.departmentId === u.departmentId),
@@ -776,7 +787,7 @@ async function post(u: User, p: string[], body: unknown) {
           target.role === 'ADMIN' &&
           !target.blocked &&
           (b.deleted || b.blocked || (b.role && b.role !== 'ADMIN')) &&
-          (await tx.user.count({ where: { role: 'ADMIN', blocked: false } })) <= 1
+          (await tx.user.count({ where: { role: 'ADMIN', blocked: false, deletedAt: null } })) <= 1
         )
           fail(400, 'lastAdmin');
         if (b.deleted || b.blocked || b.role === 'EMPLOYEE') {
@@ -845,7 +856,8 @@ async function post(u: User, p: string[], body: unknown) {
         .object({ categoryId: id, departmentId: id.nullable(), assigneeId: id })
         .parse(body);
       const candidate = await db.user.findUnique({ where: { id: b.assigneeId } });
-      if (!candidate || candidate.blocked || candidate.role === 'EMPLOYEE') fail(400, 'validation');
+      if (!candidate || candidate.blocked || candidate.deletedAt || candidate.role === 'EMPLOYEE')
+        fail(400, 'validation');
       const scope = b.categoryId + ':' + (b.departmentId ?? '*');
       return db.routingRule.upsert({ where: { scope }, create: { ...b, scope }, update: b });
     }
@@ -917,6 +929,11 @@ async function upload(req: Request, u: User, appealId: string) {
         fail(400, 'fileType');
       }
     } else if (detected?.mime !== allowed[ext]) fail(400, 'fileType');
+    if (
+      ['image/png', 'image/jpeg'].includes(allowed[ext]) &&
+      !safeRasterDimensions(buffer, allowed[ext])
+    )
+      fail(400, 'fileSize');
     prepared.push({
       buffer,
       name: path
@@ -963,27 +980,9 @@ async function upload(req: Request, u: User, appealId: string) {
     throw e;
   }
 }
-async function limitedBody(req: Request, limit: number) {
-  const reader = req.body?.getReader();
-  if (!reader) return Buffer.alloc(0);
-  const chunks: Buffer[] = [];
-  let size = 0;
-  try {
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > limit) {
-        await reader.cancel();
-        fail(413, 'fileSize');
-      }
-      chunks.push(Buffer.from(value));
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  return Buffer.concat(chunks);
-}
+const limitedBody = readLimitedBody;
+let uploadCount = 0;
+const uploadUsers = new Set<string>();
 export async function handle(req: Request, segments: string[]) {
   try {
     if (!isAllowedLocalRequest(req, req.method !== 'GET')) fail(403, 'forbidden');
@@ -992,9 +991,17 @@ export async function handle(req: Request, segments: string[]) {
       fail(403, 'passwordChangeRequired');
     let result: unknown;
     if (req.method === 'GET') result = await get(u, segments, new URL(req.url).searchParams);
-    else if (segments[0] === 'appeals' && segments[2] === 'files')
-      result = await upload(req, u, segments[1]);
-    else {
+    else if (segments[0] === 'appeals' && segments[2] === 'files') {
+      if (uploadCount >= 2 || uploadUsers.has(u.id)) fail(429, 'rateLimited');
+      uploadCount++;
+      uploadUsers.add(u.id);
+      try {
+        result = await upload(req, u, segments[1]);
+      } finally {
+        uploadCount--;
+        uploadUsers.delete(u.id);
+      }
+    } else {
       if (Number(req.headers.get('content-length')) > 100000) fail(413, 'validation');
       result = await post(
         u,
@@ -1029,13 +1036,26 @@ export async function handle(req: Request, segments: string[]) {
           out.authorId = u.id === author ? author : '';
           if (v.author) out.author = { id: u.id === author ? author : '', name: label };
         }
-        if (v.actorId === author && v.actor) {
+        if (v.actorId === author) {
           out.actorId = '';
-          out.actor = { name: label };
+          if (v.actor) out.actor = { name: label };
         }
         if (v.assigneeId === author) {
           out.assigneeId = u.id === author ? author : '';
           if (v.assignee) out.assignee = { id: u.id === author ? author : '', name: label };
+        }
+        if (v.changes) {
+          const scrub = (value: unknown): unknown =>
+            value === author
+              ? ''
+              : Array.isArray(value)
+                ? value.map(scrub)
+                : value && typeof value === 'object'
+                  ? Object.fromEntries(
+                      Object.entries(value).map(([key, item]) => [key, scrub(item)]),
+                    )
+                  : value;
+          out.changes = scrub(v.changes);
         }
         if (v.anonymous) {
           out.sourceAssignee = null;
@@ -1046,6 +1066,9 @@ export async function handle(req: Request, segments: string[]) {
     };
     return Response.json(mask(result), { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (e) {
+    if (e instanceof BodyLimitError) return Response.json({ error: 'fileSize' }, { status: 413 });
+    if (e instanceof BodyTimeoutError)
+      return Response.json({ error: 'requestTimeout' }, { status: 408 });
     if (e instanceof ApiError) return Response.json({ error: e.message }, { status: e.status });
     if (e instanceof z.ZodError || e instanceof SyntaxError)
       return Response.json({ error: 'validation' }, { status: 400 });
@@ -1054,7 +1077,7 @@ export async function handle(req: Request, segments: string[]) {
       if (['P2003', 'P2025'].includes(e.code))
         return Response.json({ error: 'notFound' }, { status: 404 });
     }
-    console.error('API failure', e instanceof Error ? e.message : 'unknown');
+    console.error('API failure', e instanceof Error ? e.name : 'unknown');
     return Response.json({ error: 'serverError' }, { status: 500 });
   }
 }

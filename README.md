@@ -30,3 +30,5 @@ powershell -ExecutionPolicy Bypass -File .\setup.ps1
 ```
 
 После этого войдите через `admin` / `admin` или `user` / `user`. Для этих аккаунтов также принимается верхний регистр.
+
+По умолчанию сайт доступен только на этом компьютере. Результаты проверки безопасности и ограничения: [docs/security-review.md](docs/security-review.md).

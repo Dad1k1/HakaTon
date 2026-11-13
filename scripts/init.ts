@@ -36,24 +36,19 @@ export async function initialize() {
         passwordHash,
         mustChangePassword: false,
       },
-      update: {
-        passwordHash,
-        role,
-        blocked: false,
-        deletedAt: null,
-        mustChangePassword: false,
-        sessionVersion: {
-          increment:
-            !matches || existing?.blocked || existing?.deletedAt || existing?.role !== role ? 1 : 0,
-        },
-      },
+      update: process.argv.includes('--reset-defaults')
+        ? {
+            passwordHash,
+            role,
+            blocked: false,
+            deletedAt: null,
+            mustChangePassword: false,
+            sessionVersion: { increment: 1 },
+          }
+        : {},
     });
   }
-  await db.loginAttempt.deleteMany();
-  await db.user.updateMany({
-    where: { mustChangePassword: true },
-    data: { mustChangePassword: false },
-  });
+  if (process.argv.includes('--reset-defaults')) await db.loginAttempt.deleteMany();
   await db.setting.upsert({
     where: { key: 'simpleAccountsInitialized' },
     create: { key: 'simpleAccountsInitialized', value: true },
@@ -62,5 +57,7 @@ export async function initialize() {
 }
 if (process.argv[1]?.endsWith('init.ts'))
   initialize()
-    .then(() => console.log('Default accounts restored: admin / admin and user / user.'))
+    .then(() =>
+      console.log('Accounts initialized. Existing credentials and account restrictions preserved.'),
+    )
     .finally(() => db.$disconnect());

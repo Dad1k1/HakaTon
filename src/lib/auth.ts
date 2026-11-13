@@ -3,6 +3,8 @@ import Credentials from 'next-auth/providers/credentials';
 import { hash, verify, argon2id } from 'argon2';
 import { createHmac } from 'node:crypto';
 import { db } from './db';
+import { consumeLoginBudget } from './security';
+let activeVerifications = 0;
 let dummy: Promise<string>;
 export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt', maxAge: 8 * 3600 },
@@ -15,26 +17,29 @@ export const authOptions: NextAuthOptions = {
         const login = credentials?.login?.trim().toLowerCase();
         const password = credentials?.password;
         if (!login || !password || login.length > 80 || password.length > 256) return null;
-        const key = createHmac('sha256', process.env.NEXTAUTH_SECRET!).update(login).digest('hex');
-        const attempt = await db.loginAttempt.upsert({
-          where: { key },
-          create: { key, count: 1, expiresAt: new Date(Date.now() + 900000) },
-          update: { count: { increment: 1 } },
-        });
-        if (attempt.expiresAt < new Date())
-          await db.loginAttempt.update({
-            where: { key },
-            data: { count: 1, expiresAt: new Date(Date.now() + 900000) },
-          });
-        else if (attempt.count > 10) return null;
-        const user = await db.user.findUnique({ where: { login } });
-        dummy ??= hash('dummy-verification-only', { type: argon2id });
-        const candidate =
-          ['admin', 'user'].includes(login) && password.toLowerCase() === login ? login : password;
-        const ok = await verify(user?.passwordHash ?? (await dummy), candidate);
-        if (!ok || !user || user.blocked || user.deletedAt) return null;
-        await db.loginAttempt.deleteMany({ where: { key } });
-        return { id: user.id, name: user.name, sessionVersion: user.sessionVersion };
+        if (activeVerifications >= 4) return null;
+        activeVerifications++;
+        try {
+          if (!(await consumeLoginBudget('auth:global', 120, 60000))) return null;
+          const key = createHmac('sha256', process.env.NEXTAUTH_SECRET!)
+            .update(login)
+            .digest('hex');
+          if (!(await consumeLoginBudget(key, 10, 900000))) return null;
+          const user = await db.user.findUnique({ where: { login } });
+          dummy ??= hash('dummy-verification-only', { type: argon2id });
+          const candidate =
+            ['admin', 'user'].includes(login) && password.toLowerCase() === login
+              ? login
+              : password;
+          const ok = await verify(user?.passwordHash ?? (await dummy), candidate).catch(
+            () => false,
+          );
+          if (!ok || !user || user.blocked || user.deletedAt) return null;
+          await db.loginAttempt.deleteMany({ where: { key } });
+          return { id: user.id, name: user.name, sessionVersion: user.sessionVersion };
+        } finally {
+          activeVerifications--;
+        }
       },
     }),
   ],
