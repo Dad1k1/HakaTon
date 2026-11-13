@@ -44,7 +44,7 @@ export function PasswordForm() {
           id="new-password"
           type="password"
           name="newPassword"
-          minLength={12}
+          minLength={4}
           maxLength={256}
           required
           autoComplete="new-password"
@@ -300,7 +300,7 @@ function Admin() {
                       id="admin-password"
                       name="password"
                       type="password"
-                      minLength={12}
+                      minLength={4}
                       maxLength={256}
                       required={!edit}
                       autoComplete="new-password"

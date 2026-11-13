@@ -440,7 +440,7 @@ async function post(u: User, p: string[], body: unknown) {
   }
   if (p[0] === 'password') {
     const b = z
-      .object({ currentPassword: str.max(256), newPassword: z.string().min(12).max(256) })
+      .object({ currentPassword: str.max(256), newPassword: z.string().min(4).max(256) })
       .parse(body);
     if (!(await verify(u.passwordHash, b.currentPassword))) fail(400, 'wrongPassword');
     await db.user.update({
@@ -743,7 +743,7 @@ async function post(u: User, p: string[], body: unknown) {
           name: str.max(120),
           role: z.enum(['EMPLOYEE', 'RESPONSIBLE', 'MANAGER', 'ADMIN']),
           departmentId: id,
-          password: z.string().min(12).max(256),
+          password: z.string().min(4).max(256),
         })
         .parse(body);
       const { password, ...rest } = b;
@@ -760,7 +760,7 @@ async function post(u: User, p: string[], body: unknown) {
           role: z.enum(['EMPLOYEE', 'RESPONSIBLE', 'MANAGER', 'ADMIN']).optional(),
           departmentId: id.optional(),
           name: str.max(120).optional(),
-          password: z.string().min(12).max(256).optional(),
+          password: z.string().min(4).max(256).optional(),
         })
         .strict()
         .parse(body);
@@ -807,7 +807,10 @@ async function post(u: User, p: string[], body: unknown) {
               ? { deletedAt: deleted ? new Date() : null, blocked: deleted }
               : {}),
             ...(password
-              ? { passwordHash: await hash(password, { type: argon2id }), mustChangePassword: true }
+              ? {
+                  passwordHash: await hash(password, { type: argon2id }),
+                  mustChangePassword: false,
+                }
               : {}),
             ...(password ||
             b.role ||

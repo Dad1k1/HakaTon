@@ -81,7 +81,7 @@
   "changePassword": "Change password",
   "currentPassword": "Current password",
   "newPassword": "New password",
-  "passwordHint": "At least 12 characters. Sign in again after changing it.",
+  "passwordHint": "Account password.",
   "forcePassword": "Set your own password to continue.",
   "saved": "Changes saved",
   "users": "Users",
