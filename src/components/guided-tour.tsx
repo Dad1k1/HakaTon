@@ -2,7 +2,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, ArrowRight, Compass, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Compass, X } from './ui/icons';
 import { useApp } from './context';
 import { Button } from './ui/button';
 const steps = ['nav-appeals', 'create', 'form', 'anonymous', 'submit'] as const;

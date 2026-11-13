@@ -29,7 +29,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: [npm, run, db:migrate]
+    command: [sh, -c, 'npm run db:migrate && npm run db:init']
   app:
     image: modus-feedback-app
     build:
@@ -40,6 +40,8 @@ services:
       AUTH_TRUST_HOST: 'true'
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?Run setup first}
       UPLOAD_DIR: /app/uploads
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_APP_URL: ${TELEGRAM_APP_URL:-}
     ports:
       - '3000:3000'
     volumes:
@@ -47,6 +49,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      telegram:
+        condition: service_started
     restart: unless-stopped
     init: true
     healthcheck:
@@ -60,6 +64,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+  telegram:
+    <<: *tools
+    environment:
+      <<: *tool-env
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_APP_URL: ${TELEGRAM_APP_URL:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: [npm, run, telegram:worker]
+    restart: on-failure
+    init: true
   initialize:
     <<: *tools
     profiles: [setup]

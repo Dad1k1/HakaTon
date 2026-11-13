@@ -81,7 +81,7 @@
   "changePassword": "Change password",
   "currentPassword": "Current password",
   "newPassword": "New password",
-  "passwordHint": "At least 12 characters. Sign in again after changing it.",
+  "passwordHint": "Account password.",
   "forcePassword": "Set your own password to continue.",
   "saved": "Changes saved",
   "users": "Users",
@@ -186,7 +186,10 @@
     "fileSize": "Each file must be between 1 byte and 10 MB.",
     "fileType": "Unsupported file type or content.",
     "fileCount": "An appeal can have at most five attachments.",
-    "serverError": "Request failed. Please try again later."
+    "serverError": "Request failed. Please try again later.",
+    "telegramUnavailable": "Telegram is unavailable. Please try again later.",
+    "telegramWorkerUnavailable": "The bot is not accepting commands. Check Telegram status in settings and start the telegram service.",
+    "telegramNotConnected": "Connect Telegram first."
   },
   "awaitingResponse": "Awaiting response",
   "awaitingResponseHint": "No first substantive response",
@@ -272,5 +275,28 @@
       "title": "You’re ready!",
       "text": "This button sends a completed appeal. During the tour, clicking it only finishes the guide. After the tour, complete the form and submit when ready."
     }
-  }
+  },
+  "collapseSidebar": "Collapse sidebar",
+  "expandSidebar": "Expand sidebar",
+  "uploadAvatar": "Upload avatar",
+  "avatarHint": "PNG or JPEG, up to 5 MB",
+  "removeAvatar": "Remove avatar",
+  "previewImage": "Preview image",
+  "welcomeName": "Welcome, {name}",
+  "telegramConnected": "Notifications are connected. You can also send /stop to the bot.",
+  "telegramHint": "Receive new messages and appeal updates in a private chat with the bot.",
+  "telegramConnect": "Connect Telegram",
+  "telegramDisconnect": "Disconnect Telegram",
+  "telegramOpen": "Open bot",
+  "telegramStart": "Press Start in Telegram. If the chat is already open, send the full command below. The link expires in 10 minutes and is single-use.",
+  "telegramDisabled": "The administrator needs to configure TELEGRAM_BOT_TOKEN on the server.",
+  "telegramWorkerReady": "The bot is running and accepting commands.",
+  "telegramWorkerOffline": "The Telegram service is offline. Run on the server: docker compose up -d --build app telegram",
+  "telegramTokenRejected": "Telegram rejected the bot token. Check TELEGRAM_BOT_TOKEN in .env and recreate the telegram service.",
+  "telegramPollingConflict": "Another process or webhook is using this bot. Stop the other process or use a separate bot.",
+  "telegramWorkerError": "Telegram is temporarily unavailable. Check the network and logs: docker compose logs --tail=50 telegram",
+  "telegramManualCommand": "Link command to copy manually",
+  "telegramManualHint": "Copy and send the entire command. A plain /start without the code does not link your profile.",
+  "telegramTest": "Test delivery",
+  "telegramTestSent": "A test notification was sent to Telegram."
 }

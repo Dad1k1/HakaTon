@@ -46,6 +46,9 @@ test('overview uses real chart data and ends the latest panel at its last appeal
   await expect(page.locator('html')).toHaveClass(/dark/);
   await page.screenshot({ path: '.local/previews/overview-dark.png', fullPage: true });
   await page.getByRole('button', { name: 'Создать обращение', exact: true }).click();
+  await page.getByRole('dialog').evaluate(async (el) => {
+    await Promise.all(el.getAnimations().map((animation) => animation.finished));
+  });
   const anonymous = page.getByLabel('Отправить анонимно', { exact: true });
   const cancel = page.getByRole('button', { name: 'Отмена', exact: true });
   const a = await anonymous.boundingBox(),

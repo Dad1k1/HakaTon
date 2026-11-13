@@ -18,7 +18,7 @@ import {
   X,
   CircleHelp,
   CheckCircle2,
-} from 'lucide-react';
+} from './ui/icons';
 import ru from '@/messages/ru.json';
 import kk from '@/messages/kk.json';
 import en from '@/messages/en.json';
@@ -36,6 +36,9 @@ import { GuidedTour } from './guided-tour';
 import { NotificationCenter } from './notifications';
 import { SettingsScreen, PasswordForm } from './settings';
 import { signOutLocally } from '@/lib/session-client';
+import { BrandLogo } from './ui/brand-logo';
+import { Avatar } from './ui/avatar';
+import { MotionPills } from './ui/motion-pills';
 const messages = { ru, kk, en };
 export function Workspace() {
   const [locale, setL] = useState<Locale>('ru'),
@@ -267,72 +270,48 @@ function Login({
     }
   }
   return (
-    <div className="login-grid">
-      <aside className="login-info">
-        <div className="flex items-center gap-3">
-          <span className="logo">М</span>
-          <div>
-            <strong>{t('brand')}</strong>
-            <p className="text-xs muted mt-1">{t('product')}</p>
-          </div>
-        </div>
-        <div className="max-w-md">
-          <span className="eyebrow">{t('workspace')}</span>
-          <h1 className="text-4xl leading-tight font-semibold tracking-tight mt-5">
-            {t('tagline')}
-          </h1>
-          <p className="muted leading-7 mt-6">{t('overviewText')}</p>
-          <div className="flex items-center gap-3 mt-10 text-xs muted">
-            <ShieldCheck size={18} />
-            {t('privacy')}
-          </div>
-        </div>
-        <p className="text-xs muted">
-          {t('brand')} · {t('local')}
-        </p>
-      </aside>
-      <main className="flex flex-col min-h-screen">
-        <div className="flex justify-end p-6">
-          <Preferences {...{ locale, theme, setLocale, setTheme }} />
-        </div>
-        <div className="flex-1 flex items-center justify-center p-7">
-          <div className="w-full max-w-sm">
-            <div className="logo mb-7 md:hidden">М</div>
-            <p className="eyebrow mb-3">{t('brand')}</p>
-            <h2 className="text-2xl font-semibold tracking-tight">{t('signIn')}</h2>
-            <p className="muted mt-2 text-sm">{t('product')}</p>
-            <form onSubmit={submit} className="mt-8 space-y-5">
-              <div>
-                <label htmlFor="login">{t('login')}</label>
-                <input id="login" name="login" autoComplete="username" required maxLength={80} />
-              </div>
-              <div>
-                <label htmlFor="password">{t('password')}</label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  maxLength={256}
-                />
-              </div>
-              {error && (
-                <div role="alert" className="error">
-                  {error}
-                </div>
-              )}
-              <Button className="w-full" disabled={busy}>
-                {busy ? t('loading') : t('signIn')}
-                <ArrowRight size={16} />
-              </Button>
-            </form>
-            <p className="muted text-xs mt-5">{t('accountNotice')}</p>
-            <div className="surface rounded-md p-4 mt-10 text-xs muted leading-6">
-              {t('demoNotice')}
+    <div className="login-screen">
+      <header className="login-header">
+        <BrandLogo />
+        <Preferences {...{ locale, theme, setLocale, setTheme }} />
+      </header>
+      <main className="login-content">
+        <section className="login-card" aria-labelledby="signin-title">
+          <h2 id="signin-title" className="text-2xl font-semibold tracking-tight">
+            {t('signIn')}
+          </h2>
+          <p className="muted mt-2 text-sm">{t('product')}</p>
+          <form onSubmit={submit} className="mt-8 space-y-5">
+            <div>
+              <label htmlFor="login">{t('login')}</label>
+              <input id="login" name="login" autoComplete="username" required maxLength={80} />
             </div>
+            <div>
+              <label htmlFor="password">{t('password')}</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                maxLength={256}
+              />
+            </div>
+            {error && (
+              <div role="alert" className="error">
+                {error}
+              </div>
+            )}
+            <Button className="w-full" disabled={busy}>
+              {busy ? t('loading') : t('signIn')}
+              <ArrowRight size={16} />
+            </Button>
+          </form>
+          <p className="muted text-xs mt-5">{t('accountNotice')}</p>
+          <div className="surface rounded-md p-4 mt-10 text-xs muted leading-6">
+            {t('demoNotice')}
           </div>
-        </div>
+        </section>
       </main>
     </div>
   );
@@ -342,6 +321,10 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
   const t = useTranslations();
   const { user, locale, theme, setLocale, setTheme, query, navigate, api, revision, refresh } =
     useApp();
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    setCollapsed(localStorage.getItem('sidebar-collapsed') === '1');
+  }, []);
   const view = query.get('view') || 'overview';
   const [menu, setMenu] = useState(false),
     [newOpen, setNewOpen] = useState(false),
@@ -391,19 +374,19 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           onClick={() => setMenu(false)}
         />
       )}
-      <aside className={`sidebar flex flex-col ${menu ? 'open' : ''}`}>
+      <aside
+        className={`sidebar flex flex-col ${menu ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}
+      >
         <div className="p-6 flex items-center gap-3">
-          <span className="logo">М</span>
-          <div>
-            <div className="font-bold tracking-tight">{t('brand')}</div>
-            <div className="text-[10px] muted mt-1">{t('product')}</div>
-          </div>
+          <BrandLogo />
         </div>
         <div className="px-6 pt-7 pb-3 eyebrow">{t('workspace')}</div>
-        <nav className="px-3 space-y-1">
+        <nav className="px-3 space-y-1 motion-track">
           {nav.map(([key, Icon]) => (
             <button
               key={key}
+              title={t(key)}
+              aria-label={t(key)}
               data-tour={`nav-${key}`}
               className={`navitem ${view === key ? 'selected' : ''}`}
               aria-current={view === key ? 'page' : undefined}
@@ -413,7 +396,7 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
               }}
             >
               <Icon size={18} />
-              {t(key)}
+              <span className="nav-label">{t(key)}</span>
             </button>
           ))}
         </nav>
@@ -432,7 +415,7 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           )}
           <div className="flex gap-3 items-center border-t pt-5">
             <div className="rounded-full surface w-9 h-9 grid place-items-center font-semibold text-blue-600">
-              {user.name[0]}
+              <Avatar person={user} />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold truncate">{user.name}</p>
@@ -448,7 +431,8 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
           </div>
         </div>
       </aside>
-      <div className="main min-h-screen surface">
+      <MotionPills />
+      <div className={`main min-h-screen surface ${collapsed ? 'expanded' : ''}`}>
         <header className="h-[72px] bg-background border-b flex items-center justify-between px-4 md:px-10">
           <div className="flex gap-3 items-center">
             <Button
@@ -459,6 +443,19 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
               onClick={() => setMenu(!menu)}
             >
               <Menu size={20} />
+            </Button>
+            <Button
+              className="desktop-collapse"
+              variant="ghost"
+              size="icon"
+              aria-label={t(collapsed ? 'expandSidebar' : 'collapseSidebar')}
+              aria-expanded={!collapsed}
+              onClick={() => {
+                setCollapsed(!collapsed);
+                localStorage.setItem('sidebar-collapsed', collapsed ? '0' : '1');
+              }}
+            >
+              <Menu size={19} />
             </Button>
             <span className="header-crumb muted text-xs">{t('workspace')}</span>
             <ChevronRight size={13} className="muted header-crumb" />
@@ -485,7 +482,7 @@ function Shell({ error, success, clear }: { error: string; success: string; clea
             )}
           </div>
         </header>
-        <main id="main" className="content">
+        <main id="main" className="content page-enter" key={`${view}:${query.get('id') || ''}`}>
           {(error || success) && (
             <div
               className={`${error ? 'error' : 'success'} mb-6 flex justify-between gap-3`}

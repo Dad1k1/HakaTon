@@ -81,7 +81,7 @@
   "changePassword": "Смена пароля",
   "currentPassword": "Текущий пароль",
   "newPassword": "Новый пароль",
-  "passwordHint": "Не менее 12 символов. После смены войдите снова.",
+  "passwordHint": "Пароль учётной записи.",
   "forcePassword": "Установите личный пароль для продолжения работы.",
   "saved": "Изменения сохранены",
   "users": "Пользователи",
@@ -186,7 +186,10 @@
     "fileSize": "Файл должен быть от 1 байта до 10 МБ.",
     "fileType": "Формат или содержимое файла не поддерживается.",
     "fileCount": "Допускается не более пяти вложений на обращение.",
-    "serverError": "Не удалось выполнить запрос. Повторите позже."
+    "serverError": "Не удалось выполнить запрос. Повторите позже.",
+    "telegramUnavailable": "Не удалось подключиться к Telegram. Попробуйте позже.",
+    "telegramWorkerUnavailable": "Бот не принимает команды: проверьте статус Telegram в настройках и запустите сервис telegram.",
+    "telegramNotConnected": "Сначала привяжите Telegram."
   },
   "awaitingResponse": "Ожидают ответа",
   "awaitingResponseHint": "Без первого содержательного ответа",
@@ -272,5 +275,28 @@
       "title": "Готово, вы освоились!",
       "text": "Эта кнопка отправляет заполненное обращение. Сейчас её нажатие только завершит обучение. После тура заполните форму и отправьте обращение, когда будете готовы."
     }
-  }
+  },
+  "collapseSidebar": "Свернуть панель",
+  "expandSidebar": "Развернуть панель",
+  "uploadAvatar": "Загрузить аватар",
+  "avatarHint": "PNG или JPEG, до 5 МБ",
+  "removeAvatar": "Удалить аватар",
+  "previewImage": "Открыть изображение",
+  "welcomeName": "Добро пожаловать, {name}",
+  "telegramConnected": "Уведомления подключены. Отключить их также можно командой /stop в боте.",
+  "telegramHint": "Получайте новые сообщения и изменения обращений в личном чате с ботом.",
+  "telegramConnect": "Подключить Telegram",
+  "telegramDisconnect": "Отключить Telegram",
+  "telegramOpen": "Открыть бота",
+  "telegramStart": "Нажмите «Запустить» в Telegram. Если чат уже открыт, отправьте полную команду ниже. Ссылка действует 10 минут и используется один раз.",
+  "telegramDisabled": "Администратору нужно настроить TELEGRAM_BOT_TOKEN на сервере.",
+  "telegramWorkerReady": "Бот работает и принимает команды.",
+  "telegramWorkerOffline": "Сервис Telegram не запущен или потерял связь. На сервере выполните: docker compose up -d --build app telegram",
+  "telegramTokenRejected": "Telegram отклонил токен бота. Проверьте TELEGRAM_BOT_TOKEN в .env и пересоздайте сервис telegram.",
+  "telegramPollingConflict": "Этот бот уже обслуживается другим процессом или webhook. Остановите второй процесс либо используйте отдельного бота.",
+  "telegramWorkerError": "Сервис запущен, но Telegram временно недоступен. Проверьте интернет и журнал: docker compose logs --tail=50 telegram",
+  "telegramManualCommand": "Команда привязки для ручного копирования",
+  "telegramManualHint": "Скопируйте команду целиком и отправьте боту. Обычный /start без кода не привязывает профиль.",
+  "telegramTest": "Проверить доставку",
+  "telegramTestSent": "Проверочное уведомление отправлено в Telegram."
 }

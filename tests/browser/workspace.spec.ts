@@ -6,7 +6,7 @@ async function login(page: Page, role = 'employee') {
   await page.getByLabel('Логин', { exact: true }).fill(c.users[role].login);
   await page.getByLabel('Пароль', { exact: true }).fill(c.password);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Всё начинается с диалога' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Добро пожаловать,/ })).toBeVisible();
   if (await page.getByRole('button', { name: 'Пропустить', exact: true }).isVisible())
     await page.getByRole('button', { name: 'Пропустить', exact: true }).click();
 }
@@ -171,6 +171,7 @@ test('responsible completes clarification flow in the browser and sees notificat
   ).json();
   await login(page, 'responsible');
   await page.goto('/?view=appeals&id=' + created.id);
+  await page.locator('.manage-disclosure > summary').click();
   await expect(
     page.getByRole('heading', { name: 'Рассмотрение обращения', exact: true }),
   ).toBeVisible();
@@ -199,6 +200,7 @@ test('responsible completes clarification flow in the browser and sees notificat
     body: 'Procurement workflow.',
   });
   await page.reload();
+  await page.locator('.manage-disclosure > summary').click();
   await save('IN_PROGRESS');
   await save('IMPLEMENTED', 'Updated the procurement template.');
   await expect(page.getByRole('heading', { name: 'Итоговое решение', exact: true })).toBeVisible();

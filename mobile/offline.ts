@@ -18,22 +18,25 @@ const fail = (code: string, status = 400): never => {
 };
 function seed() {
   const departments = [...new Set(accounts.map((a) => a[2]))].map((name) => ({ id: uid(), name }));
-  const users = [['admin', 'Администратор', 'Управление', 'ADMIN'], ...accounts].map(
-    ([login, name, dep, role]) => ({
-      id: uid(),
-      login,
-      name,
-      role,
-      departmentId: departments.find((d) => d.name === dep)!.id,
-      locale: 'ru',
-      theme: 'light',
-      blocked: false,
-      deletedAt: null,
-      mustChangePassword: false,
-      guideDismissed: false,
-      password: 'demo12345678',
-    }),
-  );
+  const users = [
+    ['admin', 'Администратор', 'Управление', 'ADMIN'],
+    ['user', 'Пользователь', 'Управление', 'EMPLOYEE'],
+    ...accounts,
+  ].map(([login, name, dep, role]) => ({
+    id: uid(),
+    login,
+    name,
+    role,
+    departmentId: departments.find((d) => d.name === dep)!.id,
+    locale: 'ru',
+    theme: 'light',
+    blocked: false,
+    deletedAt: null,
+    mustChangePassword: false,
+    guideDismissed: false,
+    password: ['admin', 'user'].includes(login) ? login : 'demo12345678',
+    avatar: null,
+  }));
   const cats = categories.map(([code, ru, kk, en]) => ({
     id: uid(),
     code,
@@ -111,6 +114,37 @@ export async function installOffline() {
     r.onsuccess = () => resolve(r.result || seed());
     r.onerror = () => reject(r.error);
   });
+  // One-time migration preserves existing appeals, files and custom accounts.
+  if (!state.mobileVersion || state.mobileVersion < 2) {
+    for (const [login, name, role] of [
+      ['admin', 'Администратор', 'ADMIN'],
+      ['user', 'Пользователь', 'EMPLOYEE'],
+    ]) {
+      let u = state.users.find((u: Row) => u.login === login);
+      if (!u) {
+        u = {
+          id: uid(),
+          login,
+          name,
+          role,
+          departmentId: state.departments.find((d: Row) => d.name === 'Управление').id,
+          locale: 'ru',
+          theme: 'light',
+          guideDismissed: false,
+        };
+        state.users.push(u);
+      }
+      Object.assign(u, {
+        password: login,
+        role,
+        blocked: false,
+        deletedAt: null,
+        mustChangePassword: false,
+      });
+    }
+    for (const u of state.users) u.avatar ??= null;
+    state.mobileVersion = 2;
+  }
   const save = () =>
     new Promise<void>((resolve, reject) => {
       const tx = db.transaction('state', 'readwrite');
@@ -126,6 +160,13 @@ export async function installOffline() {
   };
   const view = (a: Row) => ({
     ...a,
+    comments: a.comments.map((c: Row) => ({
+      ...c,
+      author: {
+        ...c.author,
+        avatar: state.users.find((u: Row) => u.id === c.author.id)?.avatar ?? null,
+      },
+    })),
     author: a.anonymous
       ? { id: a.authorId, name: 'Анонимный сотрудник' }
       : userView(state.users.find((u: Row) => u.id === a.authorId)),
@@ -195,8 +236,11 @@ export async function installOffline() {
       const f = new URLSearchParams(String(raw));
       const u = state.users.find(
         (u: Row) =>
-          u.login === f.get('login') &&
-          u.password === f.get('password') &&
+          u.login === f.get('login')?.trim().toLowerCase() &&
+          u.password ===
+            (['admin', 'user'].includes(u.login) && f.get('password')?.toLowerCase() === u.login
+              ? u.login
+              : f.get('password')) &&
           !u.blocked &&
           !u.deletedAt,
       );
@@ -206,6 +250,10 @@ export async function installOffline() {
     }
     const u = state.users.find((u: Row) => u.id === state.session && !u.blocked && !u.deletedAt);
     if (!u) fail('unauthorized', 401);
+    if (path[0] === 'telegram') {
+      if (post) fail('telegramWorkerUnavailable', 503);
+      return { enabled: false, connected: false, worker: { running: false, ready: false } };
+    }
     if (path[0] === 'me') return userView(u);
     if (path[0] === 'lookups')
       return {
@@ -219,7 +267,7 @@ export async function installOffline() {
     }
     if (path[0] === 'password') {
       if (b.currentPassword !== u.password) fail('wrongPassword');
-      if (b.newPassword.length < 12) fail('invalidInput');
+      if (b.newPassword.length < 4) fail('invalidInput');
       u.password = b.newPassword;
       u.mustChangePassword = false;
       state.session = null;
@@ -505,10 +553,4 @@ export async function installOffline() {
     childList: true,
     subtree: true,
   });
-  const banner = document.createElement('div');
-  banner.style.cssText =
-    'padding:8px 12px;background:#fff0d7;color:#5d3700;font:12px sans-serif;text-align:center';
-  banner.textContent =
-    'Автономное демо · Логин: admin · Пароль: demo12345678 · Данные только на этом устройстве';
-  document.body.prepend(banner);
 }

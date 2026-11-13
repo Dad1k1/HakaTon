@@ -8,6 +8,8 @@ import path from 'node:path';
 import { fileTypeFromBuffer } from 'file-type';
 import { isIPv4 } from 'node:net';
 import { db } from './db';
+import { createTelegramLink, telegramCall, TelegramError } from './telegram';
+import { getTelegramWorkerStatus } from './telegram-status';
 import { authOptions } from './auth';
 import {
   visibility,
@@ -81,13 +83,14 @@ const status = z.enum([
   'CLOSED',
 ]);
 const include = {
-  author: { select: { id: true, name: true } },
+  author: { select: { id: true, name: true, avatar: true } },
   assignee: { select: { id: true, name: true } },
   category: true,
   department: true,
 } satisfies Prisma.AppealInclude;
 const safeUser = {
   id: true,
+  avatar: true,
   login: true,
   name: true,
   role: true,
@@ -204,6 +207,14 @@ function publicUser(u: User) {
 }
 async function get(u: User, p: string[], q: URLSearchParams) {
   if (p[0] === 'me') return publicUser(u);
+  if (p[0] === 'telegram') {
+    const connection = await db.telegramConnection.findUnique({ where: { userId: u.id } });
+    return {
+      enabled: !!process.env.TELEGRAM_BOT_TOKEN,
+      connected: !!connection?.chatId,
+      worker: await getTelegramWorkerStatus(),
+    };
+  }
   if (p[0] === 'lookups')
     return {
       categories: await db.category.findMany({ where: { active: true }, orderBy: { code: 'asc' } }),
@@ -250,7 +261,7 @@ async function get(u: User, p: string[], q: URLSearchParams) {
         ...include,
         attachments: { select: { id: true, name: true, size: true, mime: true } },
         comments: {
-          include: { author: { select: { id: true, name: true } } },
+          include: { author: { select: { id: true, name: true, avatar: true } } },
           orderBy: { createdAt: 'asc' },
         },
         history: { include: { actor: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
@@ -361,9 +372,50 @@ async function get(u: User, p: string[], q: URLSearchParams) {
   fail(404, 'notFound');
 }
 async function post(u: User, p: string[], body: unknown) {
+  if (p[0] === 'telegram') {
+    const b = z
+      .object({ action: z.enum(['connect', 'disconnect', 'test']) })
+      .strict()
+      .parse(body);
+    if (b.action === 'disconnect') {
+      await db.telegramConnection.deleteMany({ where: { userId: u.id } });
+      return { ok: true };
+    }
+    if (!(await getTelegramWorkerStatus()).ready) fail(503, 'telegramWorkerUnavailable');
+    if (b.action === 'test') {
+      const connection = await db.telegramConnection.findUnique({ where: { userId: u.id } });
+      if (!connection?.chatId) fail(400, 'telegramNotConnected');
+      try {
+        await telegramCall('sendMessage', {
+          chat_id: connection.chatId,
+          text:
+            (
+              {
+                ru: 'Проверка связи: уведомления «Модус Трейд» работают.',
+                en: 'Connection test: Modus Trade notifications are working.',
+                kk: 'Байланысты тексеру: «Модус Трейд» хабарландырулары жұмыс істейді.',
+              } as Record<string, string>
+            )[u.locale] || 'Modus Trade: connection test.',
+        });
+      } catch (e) {
+        if (e instanceof TelegramError && e.code === 403)
+          await db.telegramConnection.deleteMany({
+            where: { userId: u.id, chatId: connection.chatId },
+          });
+        fail(503, 'telegramUnavailable');
+      }
+      return { ok: true };
+    }
+    try {
+      return await createTelegramLink(u.id);
+    } catch {
+      fail(503, 'telegramUnavailable');
+    }
+  }
   if (p[0] === 'profile') {
     const b = z
       .object({
+        avatar: z.string().max(80000).nullable().optional(),
         name: str.max(120).optional(),
         locale: z.enum(['ru', 'kk', 'en']).optional(),
         theme: z.enum(['light', 'dark']).optional(),
@@ -371,11 +423,24 @@ async function post(u: User, p: string[], body: unknown) {
       })
       .strict()
       .parse(body);
+    if (b.avatar) {
+      const match = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/]+={0,2})$/.exec(b.avatar);
+      if (!match) fail(400, 'fileType');
+      const bytes = Buffer.from(match[2], 'base64');
+      if (!bytes.length || bytes.length > 60000) fail(400, 'fileSize');
+      let detected;
+      try {
+        detected = await fileTypeFromBuffer(bytes);
+      } catch {
+        fail(400, 'fileType');
+      }
+      if (detected?.mime !== 'image/' + match[1]) fail(400, 'fileType');
+    }
     return publicUser(await db.user.update({ where: { id: u.id }, data: b }));
   }
   if (p[0] === 'password') {
     const b = z
-      .object({ currentPassword: str.max(256), newPassword: z.string().min(12).max(256) })
+      .object({ currentPassword: str.max(256), newPassword: z.string().min(4).max(256) })
       .parse(body);
     if (!(await verify(u.passwordHash, b.currentPassword))) fail(400, 'wrongPassword');
     await db.user.update({
@@ -678,7 +743,7 @@ async function post(u: User, p: string[], body: unknown) {
           name: str.max(120),
           role: z.enum(['EMPLOYEE', 'RESPONSIBLE', 'MANAGER', 'ADMIN']),
           departmentId: id,
-          password: z.string().min(12).max(256),
+          password: z.string().min(4).max(256),
         })
         .parse(body);
       const { password, ...rest } = b;
@@ -695,7 +760,7 @@ async function post(u: User, p: string[], body: unknown) {
           role: z.enum(['EMPLOYEE', 'RESPONSIBLE', 'MANAGER', 'ADMIN']).optional(),
           departmentId: id.optional(),
           name: str.max(120).optional(),
-          password: z.string().min(12).max(256).optional(),
+          password: z.string().min(4).max(256).optional(),
         })
         .strict()
         .parse(body);
@@ -742,7 +807,10 @@ async function post(u: User, p: string[], body: unknown) {
               ? { deletedAt: deleted ? new Date() : null, blocked: deleted }
               : {}),
             ...(password
-              ? { passwordHash: await hash(password, { type: argon2id }), mustChangePassword: true }
+              ? {
+                  passwordHash: await hash(password, { type: argon2id }),
+                  mustChangePassword: false,
+                }
               : {}),
             ...(password ||
             b.role ||

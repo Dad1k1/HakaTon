@@ -13,15 +13,19 @@ import {
   Inbox,
   MessageSquare,
   Paperclip,
+  Pencil,
+  Trash,
   Plus,
   Search,
   SlidersHorizontal,
   X,
-} from 'lucide-react';
+} from './ui/icons';
 import type { Status } from '@prisma/client';
 import { departmentName } from './context';
 import { Button } from './ui/button';
-import { useApp, useLoad, num, date, type Appeal, type Analytics, type History } from './context';
+import { useApp, useLoad, num, date, type Appeal, type Analytics } from './context';
+import { Avatar } from './ui/avatar';
+import { AttachmentGallery } from './attachment-gallery';
 import { terminal, transitions } from '@/lib/domain';
 import { OverviewCharts } from './overview-charts';
 export function Badge({ value, kind = 'statuses' }: { value: string; kind?: string }) {
@@ -55,9 +59,17 @@ function PageHeading({
 function Loading() {
   const t = useTranslations();
   return (
-    <p className="p-8 muted" role="status">
-      {t('loading')}
-    </p>
+    <div className="loading-skeleton p-6 space-y-5" role="status" aria-label={t('loading')}>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex gap-4">
+          <span className="skeleton w-10 h-10 rounded-xl" />
+          <div className="flex-1 space-y-3">
+            <div className="skeleton h-4 w-3/4 rounded-full" />
+            <div className="skeleton h-3 w-1/2 rounded-full" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 function Empty() {
@@ -97,46 +109,6 @@ function Stat({
     </Tag>
   );
 }
-function Activity({ items }: { items: History[] }) {
-  const { locale, navigate } = useApp();
-  const t = useTranslations();
-  return (
-    <div className="panel activity-panel">
-      <div className="p-5 border-b flex gap-2 items-center">
-        <Clock size={16} className="muted" />
-        <h2 className="font-semibold text-sm">{t('recent')}</h2>
-      </div>
-      {!items.length ? (
-        <Empty />
-      ) : (
-        items.map((h, i) => (
-          <button
-            onClick={() => h.appeal && navigate({ view: 'appeals', id: h.appeal.id })}
-            key={h.id}
-            className="flex gap-3 p-5 border-b last:border-0 w-full text-left"
-          >
-            <div className="flex flex-col items-center">
-              <div className="w-7 h-7 surface rounded-full grid place-items-center">
-                <MessageSquare size={12} className="muted" />
-              </div>
-              {i < items.length - 1 && <div className="w-px flex-1 bg-border mt-1" />}
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium">{t(`events.${h.action}`)}</p>
-              <p className="text-xs muted mt-1 line-clamp-2">
-                {h.appeal && num(h.appeal.number) + ' · '}
-                {h.appeal?.title}
-              </p>
-              <p className="text-[10px] muted mt-2">
-                {h.actor.name} · {date(h.createdAt, locale, true)}
-              </p>
-            </div>
-          </button>
-        ))
-      )}
-    </div>
-  );
-}
 export function Overview({ onNew }: { onNew: () => void }) {
   const { user, navigate, locale } = useApp();
   const t = useTranslations();
@@ -144,8 +116,10 @@ export function Overview({ onNew }: { onNew: () => void }) {
   const { data: list } = useLoad<{ items: Appeal[] }>('appeals');
   return (
     <>
-      <p className="eyebrow mb-3">{t('product')}</p>
-      <PageHeading title={t('welcome')} description={t('overviewText')}>
+      <PageHeading
+        title={t('welcomeName', { name: user.name.split(' ')[0] })}
+        description={t('overviewText')}
+      >
         <Button onClick={onNew} data-tour="create">
           <Plus size={16} />
           {t('newAppeal')}
@@ -190,7 +164,7 @@ export function Overview({ onNew }: { onNew: () => void }) {
         />
       </div>
       <OverviewCharts analytics={a} />
-      <div className="grid xl:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start overview-columns">
+      <div className="grid gap-6 overview-columns">
         <section className="panel min-w-0 overflow-hidden" data-testid="latest-appeals">
           <div className="p-5 border-b flex justify-between items-center gap-3">
             <h2 className="font-semibold">{t('latest')}</h2>
@@ -230,7 +204,6 @@ export function Overview({ onNew }: { onNew: () => void }) {
             </div>
           )}
         </section>
-        <Activity items={a?.recent ?? []} />
       </div>
     </>
   );
@@ -851,7 +824,6 @@ export function AppealDetail({ id }: { id: string }) {
     [comment, setComment] = useState(''),
     [editing, setEditing] = useState<string | null>(null),
     [editBody, setEditBody] = useState(''),
-    [minutes, setMinutes] = useState('30'),
     [rating, setRating] = useState('5'),
     [completion, setCompletion] = useState('');
   async function mutate(path: string, body: Record<string, unknown>) {
@@ -920,66 +892,65 @@ export function AppealDetail({ id }: { id: string }) {
         <ChevronLeft size={15} />
         {t('appeals')}
       </Button>
-      <div className="flex flex-wrap items-center gap-3 mb-3">
-        <span className="text-xs muted">{num(a.number)}</span>
-        <Badge value={a.status} />
-        <Badge value={a.type} kind="types" />
-      </div>
-      <h1 className="text-2xl font-semibold leading-relaxed tracking-tight max-w-4xl mb-7">
-        {a.title}
-      </h1>
-      {manageable && <ManageForm appeal={a} />}
-      <div className="flex flex-wrap items-center gap-3 my-5">
-        <label htmlFor="reminder-interval" className="!mb-0">
-          {t('remindAfter')}
-        </label>
-        <select
-          id="reminder-interval"
-          className="!w-auto"
-          value={minutes}
-          onChange={(e) => setMinutes(e.target.value)}
-        >
-          {[30, 60, 180, 1440, 10080].map((n) => (
-            <option key={n} value={n}>
-              {t(`intervals.${n}`)}
-            </option>
-          ))}
-        </select>
-        <Button
-          variant="outline"
-          disabled={busy}
-          onClick={async () => {
-            try {
-              await api('appeals/' + a.id + '/reminder', { minutes: Number(minutes) });
-              notice(t('reminderSaved'));
-              refresh();
-            } catch (e) {
-              setError((e as Error).message);
-            }
-          }}
-        >
-          {t('setReminder')}
-        </Button>
-      </div>
-      <div className="grid xl:grid-cols-[minmax(0,1fr)_310px] gap-6">
+      <section className="panel appeal-summary p-6 md:p-8 mb-6">
+        <div className="appeal-summary-copy">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <span className="muted text-xs">{num(a.number)}</span>
+            <Badge value={a.status} />
+            <Badge value={a.type} kind="types" />
+          </div>
+          <h1 className="text-2xl font-semibold leading-relaxed tracking-tight mb-4">{a.title}</h1>
+          <div className="flex gap-3 items-center mb-6 text-xs muted">
+            <Avatar person={a.author} />
+            <span>
+              {t('author')}: {a.author.name} · {date(a.createdAt, locale, true)}
+            </span>
+          </div>
+          <p className="text-content text-sm">{a.description}</p>
+          {a.proposedSolution && (
+            <div className="mt-6 pt-5 border-t">
+              <h2 className="font-semibold mb-3">{t('proposedSolution')}</h2>
+              <p className="text-content text-sm">{a.proposedSolution}</p>
+            </div>
+          )}
+          {a.recommendedNextStep && (
+            <div className="surface rounded-2xl p-4 mt-5">
+              <h2 className="text-xs font-medium mb-2">{t('recommended')}</h2>
+              <p className="text-xs text-content muted">{a.recommendedNextStep}</p>
+            </div>
+          )}
+        </div>
+        <aside className="appeal-facts">
+          <dl className="space-y-5">
+            {field(t('department'), departmentName(a.department.name, locale))}
+            {field(t('assignee'), a.assignee?.name || t('unassigned'))}
+            {field(t('category'), a.category[locale])}
+            {field(t('priority'), <Badge value={a.priority} kind="priorities" />)}
+            {field(
+              t('dueAt'),
+              <span
+                className={
+                  new Date(a.dueAt) < new Date() && !terminal.includes(a.status)
+                    ? 'text-red-600'
+                    : ''
+                }
+              >
+                {date(a.dueAt, locale, true)}
+                {new Date(a.dueAt) < new Date() &&
+                  !terminal.includes(a.status) &&
+                  ' · ' + t('overdue')}
+              </span>,
+            )}
+          </dl>
+          {a.demo && (
+            <p className="surface p-3 rounded-md muted text-[10px] leading-5 mt-6">
+              {t('demoNotice')}
+            </p>
+          )}
+        </aside>
+      </section>
+      <div className="grid gap-6">
         <div className="min-w-0 space-y-6">
-          <section className="panel p-6">
-            <h2 className="font-semibold mb-4">{t('description')}</h2>
-            <p className="text-content text-sm">{a.description}</p>
-            {a.proposedSolution && (
-              <>
-                <h3 className="font-semibold mt-7 mb-3">{t('proposedSolution')}</h3>
-                <p className="text-content text-sm">{a.proposedSolution}</p>
-              </>
-            )}
-            <p className="text-[11px] muted mt-6 pt-4 border-t">{t('immutable')}</p>
-            {a.recommendedNextStep && (
-              <div className="surface rounded-md p-4 mt-5">
-                <h3 className="text-xs font-medium mb-2">{t('recommended')}</h3>
-                <p className="text-xs text-content muted">{a.recommendedNextStep}</p>
-              </div>
-            )}
-          </section>
           {a.result && (
             <section className="panel p-6 border-l-4 border-l-blue-600">
               <h2 className="font-semibold mb-3">{t('result')}</h2>
@@ -987,41 +958,33 @@ export function AppealDetail({ id }: { id: string }) {
               <p className="text-content text-sm">{a.result}</p>
             </section>
           )}
-          <section className="panel p-6">
-            <h2 className="font-semibold mb-4 flex items-center gap-2">
-              <Paperclip size={16} />
-              {t('attachments')} <span className="muted text-xs">{a.attachments.length}/5</span>
-            </h2>
-            <div className="space-y-3">
-              {a.attachments.map((f) => (
-                <a
-                  key={f.id}
-                  className="flex justify-between gap-4 text-xs text-blue-600 border rounded-md p-3"
-                  href={'/api/data/files/' + f.id}
-                >
-                  {f.name}
-                  <span className="muted">{Math.ceil(f.size / 1024)} KB</span>
-                </a>
-              ))}
-            </div>
-            {a.attachments.length < 5 && !(user.role === 'ADMIN' && a.authorId !== user.id) && (
-              <div className="mt-4">
-                <label htmlFor="detail-files">{t('upload')}</label>
-                <input
-                  id="detail-files"
-                  type="file"
-                  multiple
-                  accept=".pdf,.png,.jpg,.jpeg,.txt,.docx,.xlsx"
-                  disabled={busy}
-                  onChange={(e) => {
-                    void uploadFiles(Array.from(e.target.files || []));
-                    e.target.value = '';
-                  }}
-                />
-                <p className="muted text-[10px] mt-2">{t('fileHint')}</p>
-              </div>
-            )}
-          </section>
+          {a.attachments.length > 0 && (
+            <section className="panel p-6">
+              <h2 className="font-semibold mb-5 flex items-center gap-2">
+                <Paperclip size={16} />
+                {t('attachments')}
+                <span className="muted text-xs">{a.attachments.length}</span>
+              </h2>
+              <AttachmentGallery files={a.attachments} />
+              {a.attachments.length < 5 && !(user.role === 'ADMIN' && a.authorId !== user.id) && (
+                <div className="mt-4">
+                  <label htmlFor="detail-files">{t('upload')}</label>
+                  <input
+                    id="detail-files"
+                    type="file"
+                    multiple
+                    accept=".pdf,.png,.jpg,.jpeg,.txt,.docx,.xlsx"
+                    disabled={busy}
+                    onChange={(e) => {
+                      void uploadFiles(Array.from(e.target.files || []));
+                      e.target.value = '';
+                    }}
+                  />
+                  <p className="muted text-[10px] mt-2">{t('fileHint')}</p>
+                </div>
+              )}
+            </section>
+          )}
           <section
             className="panel p-6"
             onDragOver={(e) => e.preventDefault()}
@@ -1056,81 +1019,72 @@ export function AppealDetail({ id }: { id: string }) {
               {t('comments')} <span className="muted text-xs">{a.comments.length}</span>
             </h2>
             {a.comments.map((c) => (
-              <div key={c.id} className="mb-5 pb-5 border-b">
-                <div className="flex items-center justify-between gap-3 text-xs">
-                  <strong>{c.author.name}</strong>
-                  <span className="muted text-[10px]">{date(c.createdAt, locale, true)}</span>
+              <div
+                key={c.id}
+                className={`discussion-message ${c.author.id === user.id ? 'own' : ''}`}
+              >
+                <Avatar person={c.author} />
+                <div className="message-bubble">
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <strong>{c.author.name}</strong>
+                    <span className="muted text-[10px]">{date(c.createdAt, locale, true)}</span>
+                  </div>
+                  {editing === c.id ? (
+                    <div className="space-y-2 mt-3">
+                      <textarea
+                        aria-label={t('editMessage')}
+                        value={editBody}
+                        onChange={(e) => setEditBody(e.target.value)}
+                        maxLength={10000}
+                      />
+                      <Button
+                        disabled={busy || !editBody.trim()}
+                        onClick={() =>
+                          void mutate('comments/' + c.id, { action: 'edit', body: editBody })
+                        }
+                      >
+                        {t('save')}
+                      </Button>
+                      <Button variant="ghost" onClick={() => setEditing(null)}>
+                        {t('cancel')}
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-content text-sm mt-3">{c.body}</p>
+                  )}
+                  {(c.author.id === user.id || user.role === 'ADMIN') && (
+                    <div className="message-actions">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t('editMessage')}
+                        title={t('editMessage')}
+                        disabled={busy}
+                        onClick={() => {
+                          setEditing(c.id);
+                          setEditBody(c.body);
+                        }}
+                      >
+                        <Pencil size={15} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t('delete')}
+                        title={t('delete')}
+                        disabled={busy}
+                        onClick={() => {
+                          if (window.confirm(t('confirmMessageDelete')))
+                            void mutate('comments/' + c.id, { action: 'delete' });
+                        }}
+                      >
+                        <Trash size={15} />
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                {editing === c.id ? (
-                  <div className="space-y-2 mt-3">
-                    <textarea
-                      aria-label={t('editMessage')}
-                      value={editBody}
-                      onChange={(e) => setEditBody(e.target.value)}
-                      maxLength={10000}
-                    />
-                    <Button
-                      disabled={busy || !editBody.trim()}
-                      onClick={() =>
-                        void mutate('comments/' + c.id, { action: 'edit', body: editBody })
-                      }
-                    >
-                      {t('save')}
-                    </Button>
-                    <Button variant="ghost" onClick={() => setEditing(null)}>
-                      {t('cancel')}
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-content text-sm mt-3">{c.body}</p>
-                )}
-                {(c.author.id === user.id || user.role === 'ADMIN') && (
-                  <div className="flex gap-2 mt-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => {
-                        setEditing(c.id);
-                        setEditBody(c.body);
-                      }}
-                    >
-                      {t('editMessage')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => {
-                        if (window.confirm(t('confirmMessageDelete')))
-                          void mutate('comments/' + c.id, { action: 'delete' });
-                      }}
-                    >
-                      {t('delete')}
-                    </Button>
-                  </div>
-                )}
               </div>
             ))}
-            <div className="grid sm:grid-cols-2 gap-3 mb-4">
-              {a.attachments.map((f) => (
-                <a
-                  key={f.id}
-                  href={'/api/data/files/' + f.id}
-                  className="border rounded p-2 text-xs"
-                >
-                  {['image/png', 'image/jpeg'].includes(f.mime) && (
-                    <img
-                      src={'/api/data/files/' + f.id + '?inline=1'}
-                      alt={f.name}
-                      className="max-h-48 w-full object-contain mb-2"
-                      loading="lazy"
-                    />
-                  )}
-                  {f.name}
-                </a>
-              ))}
-            </div>
             <form onSubmit={submitComment}>
               <label htmlFor="comment" className="sr-only">
                 {t('comments')}
@@ -1143,7 +1097,25 @@ export function AppealDetail({ id }: { id: string }) {
                 placeholder={t('commentPlaceholder')}
                 required
               />
-              <div className="flex justify-end mt-3">
+              <div className="flex flex-wrap justify-between gap-3 mt-3">
+                {a.attachments.length === 0 &&
+                  !(user.role === 'ADMIN' && a.authorId !== user.id) && (
+                    <label className="attach-control">
+                      <Paperclip size={16} />
+                      {t('upload')}
+                      <input
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg,.txt,.docx,.xlsx"
+                        multiple
+                        disabled={busy}
+                        onChange={(e) => {
+                          void uploadFiles(Array.from(e.target.files || []));
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                  )}
+
                 <Button disabled={busy || !comment.trim()}>
                   {busy ? t('loading') : t('send')}
                 </Button>
@@ -1190,45 +1162,17 @@ export function AppealDetail({ id }: { id: string }) {
               {t('rating')}: {a.rating} / 5
             </p>
           )}
-          <section className="panel p-6">
-            <h2 className="font-semibold mb-5">{t('history')}</h2>
-            {a.history.map((h) => (
-              <HistoryRow key={h.id} h={h} />
-            ))}
-          </section>
         </div>
-        <aside className="panel p-6 h-fit">
-          <h2 className="font-semibold border-b pb-4 mb-5">{num(a.number)}</h2>
-          <dl className="space-y-5">
-            {field(t('author'), a.author.name)}
-            {field(t('department'), departmentName(a.department.name, locale))}
-            {field(t('assignee'), a.assignee?.name || t('unassigned'))}
-            {field(t('category'), a.category[locale])}
-            {field(t('priority'), <Badge value={a.priority} kind="priorities" />)}
-            {field(
-              t('dueAt'),
-              <span
-                className={
-                  new Date(a.dueAt) < new Date() && !terminal.includes(a.status)
-                    ? 'text-red-600'
-                    : ''
-                }
-              >
-                {date(a.dueAt, locale, true)}
-                {new Date(a.dueAt) < new Date() &&
-                  !terminal.includes(a.status) &&
-                  ' · ' + t('overdue')}
-              </span>,
-            )}
-            {field(t('createdAt'), date(a.createdAt, locale, true))}
-          </dl>
-          {a.demo && (
-            <p className="surface p-3 rounded-md muted text-[10px] leading-5 mt-6">
-              {t('demoNotice')}
-            </p>
-          )}
-        </aside>
       </div>
+      {manageable && (
+        <details className="panel manage-disclosure mt-6">
+          <summary>
+            <span>{t('manage')}</span>
+            <ChevronRight size={18} />
+          </summary>
+          <ManageForm appeal={a} />
+        </details>
+      )}
     </>
   );
 }
@@ -1357,36 +1301,5 @@ function ManageForm({ appeal: a }: { appeal: Appeal }) {
         <Button disabled={busy}>{busy ? t('loading') : t('save')}</Button>
       </form>
     </section>
-  );
-}
-function HistoryRow({ h }: { h: History }) {
-  const t = useTranslations();
-  const { locale, lookups } = useApp();
-  function val(key: string, v: unknown) {
-    if (v === null) return t('unassigned');
-    if (key === 'status') return t(`statuses.${v}`);
-    if (key === 'priority') return t(`priorities.${v}`);
-    if (key === 'dueAt') return date(String(v), locale, true);
-    if (key === 'assigneeId') return lookups.users.find((u) => u.id === v)?.name || t('assignee');
-    return String(v);
-  }
-  return (
-    <div className="border-l-2 pl-4 pb-6 last:pb-0">
-      <p className="text-xs font-medium">{t(`events.${h.action}`)}</p>
-      <p className="text-[10px] muted mt-1">
-        {h.actor.name} · {date(h.createdAt, locale, true)}
-      </p>
-      {Object.entries(h.changes)
-        .filter(
-          ([k, v]) =>
-            ['status', 'priority', 'dueAt', 'assigneeId'].includes(k) && v && typeof v === 'object',
-        )
-        .map(([k, v]) => (
-          <p key={k} className="text-xs muted mt-2">
-            {t(k)}: {val(k, (v as { from: unknown }).from)} → {val(k, (v as { to: unknown }).to)}
-          </p>
-        ))}
-      {h.reason && <p className="text-content text-xs mt-2">{h.reason}</p>}
-    </div>
   );
 }
