@@ -18,6 +18,7 @@
     "db:import": "tsx scripts/import.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "mobile:build": "vite build --config mobile/vite.config.ts",
     "telegram:worker": "tsx scripts/telegram-worker.ts"
   },
   "dependencies": {
@@ -54,6 +55,7 @@
     "tailwindcss": "3.4.19",
     "tsx": "4.21.0",
     "typescript": "5.9.3",
+    "vite": "6.4.6",
     "vitest": "5.1.0"
   },
   "overrides": {
