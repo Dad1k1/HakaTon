@@ -3,8 +3,7 @@ import Credentials from 'next-auth/providers/credentials';
 import { hash, verify, argon2id } from 'argon2';
 import { createHmac } from 'node:crypto';
 import { db } from './db';
-import { consumeLoginBudget } from './security';
-let activeVerifications = 0;
+import { consumeLoginBudget, acquirePasswordWork } from './security';
 let dummy: Promise<string>;
 export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt', maxAge: 8 * 3600 },
@@ -17,8 +16,8 @@ export const authOptions: NextAuthOptions = {
         const login = credentials?.login?.trim().toLowerCase();
         const password = credentials?.password;
         if (!login || !password || login.length > 80 || password.length > 256) return null;
-        if (activeVerifications >= 4) return null;
-        activeVerifications++;
+        const release = acquirePasswordWork();
+        if (!release) return null;
         try {
           if (!(await consumeLoginBudget('auth:global', 120, 60000))) return null;
           const key = createHmac('sha256', process.env.NEXTAUTH_SECRET!)
@@ -38,7 +37,7 @@ export const authOptions: NextAuthOptions = {
           await db.loginAttempt.deleteMany({ where: { key } });
           return { id: user.id, name: user.name, sessionVersion: user.sessionVersion };
         } finally {
-          activeVerifications--;
+          release();
         }
       },
     }),

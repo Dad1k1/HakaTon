@@ -4,10 +4,27 @@ import {
   BodyLimitError,
   safeRasterDimensions,
   consumeLoginBudget,
+  acquirePasswordWork,
 } from '../src/lib/security';
 import { db } from '../src/lib/db';
 import { initialize } from '../scripts/init';
 import { hash, argon2id } from 'argon2';
+import { credentials, client, data } from './helpers';
+it('bounds concurrent password work and releases slots only once', () => {
+  const slots = Array.from({ length: 4 }, () => acquirePasswordWork());
+  try {
+    expect(slots.every(Boolean)).toBe(true);
+    expect(acquirePasswordWork()).toBeNull();
+    slots[0]!();
+    slots[0]!();
+    const replacement = acquirePasswordWork();
+    expect(replacement).not.toBeNull();
+    expect(acquirePasswordWork()).toBeNull();
+    replacement!();
+  } finally {
+    slots.forEach((release) => release?.());
+  }
+});
 it('rejects chunked bodies beyond the limit', async () => {
   const body = new ReadableStream({
     start(controller) {
@@ -69,6 +86,26 @@ describe.skipIf(process.env.RUN_INTEGRATION !== '1')('shared login budget', () =
           sessionVersion: previous.sessionVersion,
         },
       });
+      await db.loginAttempt.deleteMany({ where: { key } });
+    }
+  });
+  it('limits repeated password verification through the password API', async () => {
+    if (!process.env.DATABASE_URL?.endsWith('_test'))
+      throw new Error('Dedicated test database required');
+    const cfg = await credentials();
+    const c = await client(cfg.users.employee.login, cfg.password);
+    const key = 'password:' + cfg.users.employee.id;
+    await db.loginAttempt.deleteMany({ where: { key } });
+    try {
+      for (let i = 0; i < 11; i++) {
+        const response = await data(c, 'password', {
+          currentPassword: 'incorrect',
+          newPassword: 'unchanged',
+        });
+        expect(response.status()).toBe(i < 10 ? 400 : 429);
+      }
+    } finally {
+      await c.dispose();
       await db.loginAttempt.deleteMany({ where: { key } });
     }
   });

@@ -15,6 +15,8 @@ import {
   BodyLimitError,
   BodyTimeoutError,
   safeRasterDimensions,
+  acquirePasswordWork,
+  consumeLoginBudget,
 } from './security';
 import { authOptions } from './auth';
 import {
@@ -1003,11 +1005,26 @@ export async function handle(req: Request, segments: string[]) {
       }
     } else {
       if (Number(req.headers.get('content-length')) > 100000) fail(413, 'validation');
-      result = await post(
-        u,
-        segments,
-        JSON.parse((await limitedBody(req, 100000)).toString('utf8')),
-      );
+      const body: unknown = JSON.parse((await limitedBody(req, 100000)).toString('utf8'));
+      const passwordOperation =
+        segments[0] === 'password' ||
+        (segments[0] === 'admin' &&
+          segments[1] === 'users' &&
+          !!body &&
+          typeof body === 'object' &&
+          'password' in body);
+      const release = passwordOperation ? acquirePasswordWork() : null;
+      if (passwordOperation && !release) fail(429, 'rateLimited');
+      try {
+        if (
+          segments[0] === 'password' &&
+          !(await consumeLoginBudget('password:' + u.id, 10, 900000))
+        )
+          fail(429, 'rateLimited');
+        result = await post(u, segments, body);
+      } finally {
+        release?.();
+      }
     }
     if (result instanceof Response) return result;
     const anonymous = await db.appeal.findMany({

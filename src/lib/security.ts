@@ -69,3 +69,17 @@ export function safeRasterDimensions(bytes: Buffer, mime: string, maxPixels = 16
   }
   return width > 0 && height > 0 && width <= 8192 && height <= 8192 && width * height <= maxPixels;
 }
+
+let passwordWork = 0;
+/** Bound expensive password work across login, password changes and admin operations. */
+export function acquirePasswordWork(): (() => void) | null {
+  if (passwordWork >= 4) return null;
+  passwordWork++;
+  let released = false;
+  return () => {
+    if (!released) {
+      passwordWork--;
+      released = true;
+    }
+  };
+}
