@@ -12,7 +12,6 @@ Invoke-Docker compose version
 if (-not (Test-Path .env)) {
   $dbPassword = New-Secret 24
   $authSecret = New-Secret 32
-  $adminPassword = New-Secret 16
   $demoPassword = New-Secret 16
   $config = @"
 POSTGRES_USER=modus
@@ -21,13 +20,21 @@ POSTGRES_PASSWORD=$dbPassword
 DATABASE_URL=postgresql://modus:$dbPassword@localhost:5432/modus
 NEXTAUTH_SECRET=$authSecret
 ADMIN_LOGIN=admin
-ADMIN_PASSWORD=$adminPassword
+ADMIN_PASSWORD=admin
 DEMO_PASSWORD=$demoPassword
 UPLOAD_DIR=.local/uploads
 "@
   [System.IO.File]::WriteAllText((Join-Path $PSScriptRoot '.env'), $config, (New-Object System.Text.UTF8Encoding($false)))
-  Write-Host 'Created .env. Keep this file private: it contains local secrets and temporary passwords.'
+  Write-Host 'Created .env. Keep this file private: it contains local database secrets.'
 }
+$existingConfig = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot '.env'))
+foreach ($entry in @(@('ADMIN_LOGIN','admin'), @('ADMIN_PASSWORD','admin'))) {
+  $pattern = '(?m)^' + $entry[0] + '=.*$'
+  $line = $entry[0] + '=' + $entry[1]
+  if ($existingConfig -match $pattern) { $existingConfig = [regex]::Replace($existingConfig, $pattern, $line) }
+  else { $existingConfig += "`n" + $line + "`n" }
+}
+[System.IO.File]::WriteAllText((Join-Path $PSScriptRoot '.env'), $existingConfig, (New-Object System.Text.UTF8Encoding($false)))
 Invoke-Docker compose build
 Invoke-Docker compose up -d db
 Invoke-Docker compose run --rm migrate

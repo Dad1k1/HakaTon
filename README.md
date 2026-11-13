@@ -19,6 +19,14 @@ powershell -ExecutionPolicy Bypass -File .\setup.ps1
 Обновление:
 
 ```powershell
-git pull origin android-offline-demo
+git pull origin main
 docker compose up -d --build app
 ```
+
+Если вход не работает после старой установки:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+```
+
+После этого войдите через `admin` / `admin` или `user` / `user`. Для этих аккаунтов также принимается верхний регистр.
