@@ -48,7 +48,7 @@ model User {
  deletedAt DateTime?
  guideDismissed Boolean @default(false)
  blocked Boolean @default(false)
- mustChangePassword Boolean @default(true)
+ mustChangePassword Boolean @default(false)
  sessionVersion Int @default(0)
  locale String @default("ru")
  theme String @default("light")

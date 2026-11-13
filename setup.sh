@@ -31,5 +31,5 @@ docker compose run --rm migrate
 docker compose --profile setup run --rm initialize
 if [[ "$mode" == '--demo' ]]; then docker compose --profile setup run --rm demo; fi
 docker compose up -d app
-echo 'Ready: http://localhost:3000. Login: ADMIN_LOGIN / ADMIN_PASSWORD from .env.'
-echo 'For demo accounts use DEMO_PASSWORD from .env. Change temporary passwords at first login.'
+echo 'Ready: http://localhost:3000. Accounts: ADMIN / ADMIN and USER / USER.'
+echo ''

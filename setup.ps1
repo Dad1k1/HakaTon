@@ -34,5 +34,5 @@ Invoke-Docker compose run --rm migrate
 Invoke-Docker compose --profile setup run --rm initialize
 if ($Demo) { Invoke-Docker compose --profile setup run --rm demo }
 Invoke-Docker compose up -d app
-Write-Host 'Ready: http://localhost:3000. Login: ADMIN_LOGIN / ADMIN_PASSWORD from .env.'
-Write-Host 'For demo accounts use DEMO_PASSWORD from .env. Change temporary passwords at first login.'
+Write-Host 'Ready: http://localhost:3000. Accounts: ADMIN / ADMIN and USER / USER.'
+Write-Host ''
