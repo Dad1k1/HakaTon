@@ -189,7 +189,9 @@
     "serverError": "Не удалось выполнить запрос. Повторите позже.",
     "telegramUnavailable": "Не удалось подключиться к Telegram. Попробуйте позже.",
     "telegramWorkerUnavailable": "Бот не принимает команды: проверьте статус Telegram в настройках и запустите сервис telegram.",
-    "telegramNotConnected": "Сначала привяжите Telegram."
+    "telegramNotConnected": "Сначала привяжите Telegram.",
+    "rateLimited": "Слишком много запросов. Повторите позже.",
+    "requestTimeout": "Время загрузки истекло. Повторите отправку."
   },
   "awaitingResponse": "Ожидают ответа",
   "awaitingResponseHint": "Без первого содержательного ответа",

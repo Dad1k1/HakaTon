@@ -14,11 +14,11 @@ describe.skipIf(!run)('real HTTP API + PostgreSQL', () => {
   let fileId: string;
   beforeAll(async () => {
     cfg = await credentials();
-    [employee, responsible, manager, admin, other] = await Promise.all(
-      ['employee', 'responsible', 'manager', 'admin', 'other'].map((k) =>
-        client(cfg.users[k].login, cfg.password),
-      ),
-    );
+    const sessions = [];
+    for (const k of ['employee', 'responsible', 'manager', 'admin', 'other']) {
+      sessions.push(await client(cfg.users[k].login, cfg.password));
+    }
+    [employee, responsible, manager, admin, other] = sessions;
   });
   afterAll(async () => {
     await Promise.all([employee, responsible, manager, admin, other].map((c) => c?.dispose()));

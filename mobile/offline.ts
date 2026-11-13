@@ -1,4 +1,5 @@
 // Standalone demo adapter. IndexedDB persists records and attachments on this device.
+import { hashPassword, verifyPassword } from './password';
 import dataset from '../data/dataset.json';
 import { categories, accounts } from '../scripts/catalog';
 import {
@@ -134,13 +135,10 @@ export async function installOffline() {
         };
         state.users.push(u);
       }
-      Object.assign(u, {
-        password: login,
-        role,
-        blocked: false,
-        deletedAt: null,
-        mustChangePassword: false,
-      });
+      if (!u.password && !u.passwordHash) u.password = login;
+      u.blocked ??= false;
+      u.deletedAt ??= null;
+      u.mustChangePassword ??= false;
     }
     for (const u of state.users) u.avatar ??= null;
     state.mobileVersion = 2;
@@ -153,27 +151,64 @@ export async function installOffline() {
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error);
     });
+  for (const user of state.users) {
+    if (typeof user.password === 'string') {
+      user.passwordHash = await hashPassword(user.password);
+      delete user.password;
+    }
+  }
   await save();
   const userView = (u: Row) => {
-    const { password, ...safe } = u;
+    if (!u) return null;
+    const { password, passwordHash, ...safe } = u;
     return { ...safe, department: state.departments.find((d: Row) => d.id === u.departmentId) };
   };
-  const view = (a: Row) => ({
-    ...a,
-    comments: a.comments.map((c: Row) => ({
-      ...c,
-      author: {
-        ...c.author,
-        avatar: state.users.find((u: Row) => u.id === c.author.id)?.avatar ?? null,
-      },
-    })),
-    author: a.anonymous
-      ? { id: a.authorId, name: 'Анонимный сотрудник' }
-      : userView(state.users.find((u: Row) => u.id === a.authorId)),
-    assignee: a.assigneeId ? userView(state.users.find((u: Row) => u.id === a.assigneeId)) : null,
-    category: state.categories.find((c: Row) => c.id === a.categoryId),
-    department: state.departments.find((d: Row) => d.id === a.departmentId),
-  });
+  const view = (a: Row) => {
+    const author = state.users.find((u: Row) => u.id === a.authorId);
+    const hidden = a.anonymous && state.session !== a.authorId;
+    const label = 'Анонимный сотрудник';
+    const scrub = (value: any): any =>
+      value === a.authorId
+        ? ''
+        : Array.isArray(value)
+          ? value.map(scrub)
+          : value && typeof value === 'object'
+            ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, scrub(v)]))
+            : value;
+    return {
+      ...a,
+      authorId: hidden ? '' : a.authorId,
+      sourceAuthor: a.anonymous ? null : a.sourceAuthor,
+      sourceAssignee: a.anonymous ? null : a.sourceAssignee,
+      author: a.anonymous ? { id: hidden ? '' : a.authorId, name: label } : userView(author),
+      assigneeId: hidden && a.assigneeId === a.authorId ? '' : a.assigneeId,
+      assignee: a.assigneeId
+        ? hidden && a.assigneeId === a.authorId
+          ? { id: '', name: label }
+          : userView(state.users.find((u: Row) => u.id === a.assigneeId))
+        : null,
+      comments: a.comments.map((c: Row) =>
+        a.anonymous && c.author?.id === a.authorId
+          ? { ...c, author: { id: hidden ? '' : a.authorId, name: label } }
+          : {
+              ...c,
+              author: {
+                ...c.author,
+                avatar: state.users.find((u: Row) => u.id === c.author?.id)?.avatar ?? null,
+              },
+            },
+      ),
+      history: a.history.map((h: Row) => ({
+        ...h,
+        changes: hidden ? scrub(h.changes) : h.changes,
+        ...(a.anonymous && (h.actorId === a.authorId || h.actor?.name === author?.name)
+          ? { actorId: '', actor: { name: label } }
+          : {}),
+      })),
+      category: state.categories.find((c: Row) => c.id === a.categoryId),
+      department: state.departments.find((d: Row) => d.id === a.departmentId),
+    };
+  };
   function filtered(u: any, q: URLSearchParams) {
     return state.appeals
       .filter((a: any) => {
@@ -235,16 +270,15 @@ export async function installOffline() {
       }
       const f = new URLSearchParams(String(raw));
       const u = state.users.find(
-        (u: Row) =>
-          u.login === f.get('login')?.trim().toLowerCase() &&
-          u.password ===
-            (['admin', 'user'].includes(u.login) && f.get('password')?.toLowerCase() === u.login
-              ? u.login
-              : f.get('password')) &&
-          !u.blocked &&
-          !u.deletedAt,
+        (u: Row) => u.login === f.get('login')?.trim().toLowerCase() && !u.blocked && !u.deletedAt,
       );
-      if (!u) return { url: '/?error=CredentialsSignin' };
+      const rawPassword = f.get('password') || '';
+      const password =
+        u && ['admin', 'user'].includes(u.login) && rawPassword.toLowerCase() === u.login
+          ? u.login
+          : rawPassword;
+      if (!u || password.length > 256 || !(await verifyPassword(password, u.passwordHash)))
+        return { url: '/?error=CredentialsSignin' };
       state.session = u.id;
       return { url: '/' };
     }
@@ -262,13 +296,49 @@ export async function installOffline() {
         users: state.users.filter((v: Row) => !v.blocked && !v.deletedAt).map(userView),
       };
     if (path[0] === 'profile') {
+      if (!post) fail('forbidden', 403);
+      if (
+        !b ||
+        Object.keys(b).some(
+          (key) => !['name', 'locale', 'theme', 'guideDismissed', 'avatar'].includes(key),
+        )
+      )
+        fail('validation');
+      if (
+        b.name !== undefined &&
+        (typeof b.name !== 'string' || !b.name.trim() || b.name.length > 120)
+      )
+        fail('validation');
+      if (b.locale !== undefined && !['ru', 'kk', 'en'].includes(b.locale)) fail('validation');
+      if (b.theme !== undefined && !['light', 'dark'].includes(b.theme)) fail('validation');
+      if (b.guideDismissed !== undefined && typeof b.guideDismissed !== 'boolean')
+        fail('validation');
+      if (
+        b.avatar !== undefined &&
+        b.avatar !== null &&
+        (typeof b.avatar !== 'string' ||
+          b.avatar.length > 80000 ||
+          !/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(b.avatar))
+      )
+        fail('fileType');
       Object.assign(u, b);
       return userView(u);
     }
     if (path[0] === 'password') {
-      if (b.currentPassword !== u.password) fail('wrongPassword');
-      if (b.newPassword.length < 4) fail('invalidInput');
-      u.password = b.newPassword;
+      if (
+        !post ||
+        typeof b.currentPassword !== 'string' ||
+        b.currentPassword.length > 256 ||
+        !(await verifyPassword(b.currentPassword, u.passwordHash))
+      )
+        fail('wrongPassword');
+      if (
+        typeof b.newPassword !== 'string' ||
+        b.newPassword.length < 4 ||
+        b.newPassword.length > 256
+      )
+        fail('invalidInput');
+      u.passwordHash = await hashPassword(b.newPassword);
       u.mustChangePassword = false;
       state.session = null;
       return { ok: true, signInAgain: true };
@@ -313,7 +383,7 @@ export async function installOffline() {
         unassigned: rows.filter((a: Row) => !a.assigneeId).length,
         themes: [],
         recent: rows
-          .flatMap((a: Row) => a.history.map((h: Row) => ({ ...h, appeal: view(a) })))
+          .flatMap((a: Row) => view(a).history.map((h: Row) => ({ ...h, appeal: view(a) })))
           .sort((a: Row, b: Row) => b.createdAt.localeCompare(a.createdAt))
           .slice(0, 8),
       };
@@ -325,12 +395,14 @@ export async function installOffline() {
         if (k === 'users') return state.users.map(userView);
         if (k === 'config')
           return {
-            ...state,
+            departments: state.departments,
+            categories: state.categories,
+            sla: state.sla,
             rules: state.rules.map((r: Row) => ({
               ...r,
               category: state.categories.find((c: Row) => c.id === r.categoryId),
               department: state.departments.find((d: Row) => d.id === r.departmentId),
-              assignee: state.users.find((v: Row) => v.id === r.assigneeId),
+              assignee: userView(state.users.find((v: Row) => v.id === r.assigneeId)),
             })),
           };
       }
@@ -341,6 +413,13 @@ export async function installOffline() {
       if (k === 'rule-delete') {
         state.rules = state.rules.filter((r: Row) => r.id !== b.id);
         return { ok: true };
+      }
+      if (!['users', 'departments', 'categories', 'rules'].includes(k)) fail('notFound', 404);
+      if (k === 'users' && b.password !== undefined) {
+        if (typeof b.password !== 'string' || b.password.length < 4 || b.password.length > 256)
+          fail('validation');
+        b.passwordHash = await hashPassword(b.password);
+        delete b.password;
       }
       const collection = state[k];
       if (!Array.isArray(collection)) fail('notFound', 404);
@@ -440,6 +519,18 @@ export async function installOffline() {
         if (a.attachments.length + files.length > 10) fail('tooManyFiles');
         for (const f of files) {
           if (f.size > 10 * 1024 * 1024) fail('fileTooLarge', 413);
+          if (
+            ![
+              'image/png',
+              'image/jpeg',
+              'application/pdf',
+              'text/plain',
+              'text/csv',
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ].includes(f.type)
+          )
+            fail('fileType');
           const data = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(String(reader.result));
@@ -497,6 +588,7 @@ export async function installOffline() {
         action,
         reason: b.reason || '',
         changes: raw instanceof FormData ? {} : b,
+        actorId: u.id,
         actor: { name: u.name },
         createdAt: now(),
       });
@@ -518,7 +610,8 @@ export async function installOffline() {
   let queue = Promise.resolve();
   window.fetch = ((input: any, options: RequestInit = {}) => {
     const url = new URL(typeof input === 'string' ? input : input.url, location.origin);
-    if (!url.pathname.startsWith('/api/')) return original(input, options);
+    if (url.origin !== location.origin || !url.pathname.startsWith('/api/'))
+      return original(input, options);
     const task = queue.then(async () => {
       const before = structuredClone(state);
       try {

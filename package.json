@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --hostname 0.0.0.0",
+    "dev": "next dev --hostname 127.0.0.1",
     "build": "prisma generate && next build && node scripts/prepare-standalone.mjs",
     "start": "node scripts/start.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run tests/domain.test.ts",
-    "test:integration": "vitest run tests/api.test.ts tests/seed.test.ts tests/improvements.test.ts tests/telegram.test.ts",
+    "test:integration": "node --import dotenv/config node_modules/vitest/vitest.mjs run --maxWorkers=1 tests/api.test.ts tests/seed.test.ts tests/improvements.test.ts tests/telegram.test.ts tests/security.test.ts",
     "test:e2e": "playwright test",
     "db:migrate": "prisma migrate deploy",
     "db:init": "tsx scripts/init.ts",
@@ -38,7 +38,7 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "tailwind-merge": "2.6.1",
-    "undici": "^7.16.0",
+    "undici": "8.12.4",
     "zod": "4.6.7"
   },
   "devDependencies": {
@@ -55,7 +55,7 @@
     "tailwindcss": "3.4.19",
     "tsx": "4.21.0",
     "typescript": "5.9.3",
-    "vite": "^6.4.1",
+    "vite": "6.4.6",
     "vitest": "5.1.0"
   },
   "overrides": {

@@ -43,7 +43,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_APP_URL: ${TELEGRAM_APP_URL:-}
     ports:
-      - '3000:3000'
+      - '${BIND_ADDRESS:-127.0.0.1}:3000:3000'
     volumes:
       - uploads:/app/uploads
     depends_on:
@@ -82,7 +82,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: [npm, run, db:init]
+    command: [npm, run, db:init, --, --reset-defaults]
   demo:
     <<: *tools
     profiles: [setup]
