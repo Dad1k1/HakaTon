@@ -36,7 +36,6 @@ import { GuidedTour } from './guided-tour';
 import { NotificationCenter } from './notifications';
 import { SettingsScreen, PasswordForm } from './settings';
 import { signOutLocally } from '@/lib/session-client';
-import { VideoCameraBackground } from './video-camera-background';
 import { BrandLogo } from './ui/brand-logo';
 import { Avatar } from './ui/avatar';
 import { MotionPills } from './ui/motion-pills';
@@ -272,7 +271,6 @@ function Login({
   }
   return (
     <div className="login-screen">
-      <VideoCameraBackground />
       <header className="login-header">
         <BrandLogo />
         <Preferences {...{ locale, theme, setLocale, setTheme }} />

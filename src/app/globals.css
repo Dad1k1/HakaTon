@@ -1729,7 +1729,7 @@ html {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-/* The camera video stays paused; cursor movement seeks one frame at a time. */
+/* Centered sign-in form on a plain theme-aware background. */
 .login-screen {
   position: relative;
   isolation: isolate;
@@ -1738,23 +1738,6 @@ html {
 }
 .dark .login-screen {
   background: #0e0e0e;
-}
-.camera-video-background {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 70% center;
-  transform: translateY(-24vh);
-  pointer-events: none;
-  user-select: none;
-  filter: invert(1) grayscale(1);
-  mask-image: linear-gradient(#000 0%, #000 48%, transparent 78%);
-}
-.dark .camera-video-background {
-  filter: none;
 }
 .login-header {
   position: relative;
@@ -1771,9 +1754,13 @@ html {
   width: 100%;
   max-width: 456px;
   margin: 0 auto;
-  padding: clamp(220px, 29vh, 320px) 20px 40px;
+  padding: 24px 20px 40px;
+  min-height: calc(100svh - 104px);
+  display: flex;
+  align-items: center;
 }
 .login-card {
+  width: 100%;
   border: 1px solid #d7d7d799;
   border-radius: 26px;
   padding: 28px;
@@ -1812,12 +1799,8 @@ html {
     width: 132px;
     height: auto;
   }
-  .camera-video-background {
-    object-position: 50% center;
-    transform: translateY(-26vh);
-  }
   .login-content {
-    padding-top: clamp(175px, 25vh, 250px);
+    padding-top: 24px;
     padding-left: 16px;
     padding-right: 16px;
   }
