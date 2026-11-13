@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterAll } from 'vitest';
 import { db } from '../src/lib/db';
-import { credentials } from './helpers';
+import { credentials, client, data } from './helpers';
 import {
   tokenHash,
   processTelegramUpdate,
@@ -109,6 +109,93 @@ describe.skipIf(process.env.RUN_INTEGRATION !== '1')('Telegram binding and priva
         await db.notification.deleteMany({ where: { appealId } });
         await db.appeal.delete({ where: { id: appealId } });
       }
+    }
+  });
+});
+
+describe.skipIf(process.env.RUN_INTEGRATION !== '1')('Telegram worker diagnostics', () => {
+  it('reports missing, fresh, stale and wrong-token heartbeats without exposing a token', async () => {
+    const { getTelegramWorkerStatus, saveTelegramWorkerStatus } =
+      await import('../src/lib/telegram-status');
+    const original = process.env.TELEGRAM_BOT_TOKEN;
+    const previous = await db.setting.findUnique({ where: { key: 'telegramWorkerStatus' } });
+    try {
+      process.env.TELEGRAM_BOT_TOKEN = 'test-configuration';
+      await db.setting.deleteMany({ where: { key: 'telegramWorkerStatus' } });
+      expect((await getTelegramWorkerStatus()).ready).toBe(false);
+      await saveTelegramWorkerStatus({ state: 'ready' });
+      expect(await getTelegramWorkerStatus()).toEqual({ running: true, ready: true });
+      await saveTelegramWorkerStatus({ state: 'error', errorCode: 409 });
+      expect(await getTelegramWorkerStatus()).toEqual({
+        running: true,
+        ready: false,
+        errorCode: 409,
+      });
+      const row = await db.setting.findUniqueOrThrow({ where: { key: 'telegramWorkerStatus' } });
+      await db.setting.update({
+        where: { key: row.key },
+        data: { value: { ...(row.value as object), checkedAt: Date.now() - 60000 } },
+      });
+      expect((await getTelegramWorkerStatus()).running).toBe(false);
+      await saveTelegramWorkerStatus({ state: 'ready' });
+      process.env.TELEGRAM_BOT_TOKEN = 'another-token';
+      expect((await getTelegramWorkerStatus()).ready).toBe(false);
+    } finally {
+      if (original === undefined) delete process.env.TELEGRAM_BOT_TOKEN;
+      else process.env.TELEGRAM_BOT_TOKEN = original;
+      if (previous)
+        await db.setting.update({ where: { key: previous.key }, data: { value: previous.value! } });
+      else await db.setting.deleteMany({ where: { key: 'telegramWorkerStatus' } });
+    }
+  });
+  it('answers bare /start with guidance, accepts a copied command and reports an existing link', async () => {
+    const cfg = await credentials(),
+      userId = cfg.users.employee.id,
+      chatId = '-999000125';
+    const call = vi.fn(async () => ({}));
+    const token = 'b'.repeat(48);
+    await db.telegramConnection.deleteMany({ where: { userId } });
+    try {
+      const update = (text: string) => ({
+        update_id: 1,
+        message: { text, chat: { id: Number(chatId), type: 'private' } },
+      });
+      await processTelegramUpdate(update('/start'), call);
+      expect(call.mock.calls[0]).toBeDefined();
+      await db.telegramConnection.create({
+        data: { userId, tokenHash: tokenHash(token), expiresAt: new Date(Date.now() + 60000) },
+      });
+      await processTelegramUpdate(update(' /start  ' + token + '\n'), call);
+      expect((await db.telegramConnection.findUniqueOrThrow({ where: { userId } })).chatId).toBe(
+        chatId,
+      );
+      call.mockClear();
+      await processTelegramUpdate(update('/start'), call);
+      expect(call).toHaveBeenCalledWith(
+        'sendMessage',
+        expect.objectContaining({ text: expect.stringContaining('уже привязан') }),
+      );
+    } finally {
+      await db.telegramConnection.deleteMany({ where: { userId } });
+    }
+  });
+  it('rejects a new link while the worker is offline', async () => {
+    const cfg = await credentials();
+    const api = await client(cfg.users.employee.login, cfg.password);
+    const previous = await db.setting.findUnique({ where: { key: 'telegramWorkerStatus' } });
+    try {
+      await db.setting.deleteMany({ where: { key: 'telegramWorkerStatus' } });
+      const response = await data(api, 'telegram', { action: 'connect' });
+      expect(response.status()).toBe(503);
+      expect((await response.json()).error).toBe('telegramWorkerUnavailable');
+    } finally {
+      await api.dispose();
+      if (previous)
+        await db.setting.upsert({
+          where: { key: previous.key },
+          create: { key: previous.key, value: previous.value! },
+          update: { value: previous.value! },
+        });
     }
   });
 });

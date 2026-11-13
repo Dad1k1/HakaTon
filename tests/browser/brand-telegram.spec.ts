@@ -41,7 +41,9 @@ test('branded overview, integrated appeal facts and Telegram connection screen',
   // Verify UI states without involving a live Telegram account.
   await page.route('**/api/data/telegram', (route) =>
     route.request().method() === 'GET'
-      ? route.fulfill({ json: { enabled: true, connected: false } })
+      ? route.fulfill({
+          json: { enabled: true, connected: false, worker: { running: true, ready: true } },
+        })
       : route.fulfill({ json: { url: 'https://t.me/test_bot?start=' + 'a'.repeat(48) } }),
   );
   await page.reload();

@@ -187,7 +187,9 @@
     "fileType": "Unsupported file type or content.",
     "fileCount": "An appeal can have at most five attachments.",
     "serverError": "Request failed. Please try again later.",
-    "telegramUnavailable": "Telegram is unavailable. Please try again later."
+    "telegramUnavailable": "Telegram is unavailable. Please try again later.",
+    "telegramWorkerUnavailable": "The bot is not accepting commands. Check Telegram status in settings and start the telegram service.",
+    "telegramNotConnected": "Connect Telegram first."
   },
   "awaitingResponse": "Awaiting response",
   "awaitingResponseHint": "No first substantive response",
@@ -286,6 +288,15 @@
   "telegramConnect": "Connect Telegram",
   "telegramDisconnect": "Disconnect Telegram",
   "telegramOpen": "Open bot",
-  "telegramStart": "Press Start in Telegram. This link expires in 10 minutes and can only be used once.",
-  "telegramDisabled": "The administrator needs to configure TELEGRAM_BOT_TOKEN on the server."
+  "telegramStart": "Press Start in Telegram. If the chat is already open, send the full command below. The link expires in 10 minutes and is single-use.",
+  "telegramDisabled": "The administrator needs to configure TELEGRAM_BOT_TOKEN on the server.",
+  "telegramWorkerReady": "The bot is running and accepting commands.",
+  "telegramWorkerOffline": "The Telegram service is offline. Run on the server: docker compose up -d --build app telegram",
+  "telegramTokenRejected": "Telegram rejected the bot token. Check TELEGRAM_BOT_TOKEN in .env and recreate the telegram service.",
+  "telegramPollingConflict": "Another process or webhook is using this bot. Stop the other process or use a separate bot.",
+  "telegramWorkerError": "Telegram is temporarily unavailable. Check the network and logs: docker compose logs --tail=50 telegram",
+  "telegramManualCommand": "Link command to copy manually",
+  "telegramManualHint": "Copy and send the entire command. A plain /start without the code does not link your profile.",
+  "telegramTest": "Test delivery",
+  "telegramTestSent": "A test notification was sent to Telegram."
 }

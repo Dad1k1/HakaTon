@@ -49,6 +49,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      telegram:
+        condition: service_started
     restart: unless-stopped
     init: true
     healthcheck:

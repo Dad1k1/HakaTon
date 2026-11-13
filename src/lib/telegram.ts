@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { fetch, EnvHttpProxyAgent } from 'undici';
 import { db } from './db';
+import { Prisma } from '@prisma/client';
 import { canSee } from './domain';
 import ru from '../messages/ru.json';
 import en from '../messages/en.json';
@@ -19,7 +20,7 @@ export async function telegramCall<T>(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(35000),
+      signal: AbortSignal.timeout(method === 'getUpdates' ? 35000 : 12000),
       dispatcher,
     });
     const data = (await response.json()) as {
@@ -68,7 +69,8 @@ export async function processTelegramUpdate(
   const message = update.message;
   if (!message || message.chat.type !== 'private') return;
   const chatId = String(message.chat.id);
-  if (/^\/stop(?:@\w+)?$/.test(message.text || '')) {
+  const text = (message.text || '').trim();
+  if (/^\/stop(?:@\w+)?$/.test(text)) {
     await db.telegramConnection.deleteMany({ where: { chatId } });
     await call('sendMessage', {
       chat_id: chatId,
@@ -76,11 +78,18 @@ export async function processTelegramUpdate(
     });
     return;
   }
-  const match = /^\/start(?:@\w+)? ([a-f0-9]{48})$/.exec(message.text || '');
+  const match = /^\/start(?:@\w+)?\s+([a-f0-9]{48})$/.exec(text);
   if (!match) {
+    const existing = await db.telegramConnection.findUnique({
+      where: { chatId },
+      include: { user: true },
+    });
+    const linked = existing && !existing.user.blocked && !existing.user.deletedAt;
     await call('sendMessage', {
       chat_id: chatId,
-      text: 'Для привязки откройте настройки профиля на сайте и нажмите «Подключить Telegram».',
+      text: linked
+        ? 'Telegram уже привязан. Новые уведомления будут приходить сюда. Отключение: /stop.'
+        : 'Откройте настройки профиля на сайте → Telegram → Подключить Telegram. Нажмите «Запустить» по ссылке или отправьте полную команду /start с кодом из настроек. Обычный /start без кода не привязывает аккаунт.',
     });
     return;
   }
@@ -96,8 +105,9 @@ export async function processTelegramUpdate(
       data: { chatId, connectedAt: new Date(), tokenHash: null, expiresAt: null },
     });
     connected = result.count === 1;
-  } catch {
-    /* A chat already belongs to another account; do not replace it. */
+  } catch (e) {
+    // Only a duplicate chat is a binding conflict; database outages must be retried.
+    if (!(e instanceof Prisma.PrismaClientKnownRequestError) || e.code !== 'P2002') throw e;
   }
   await call('sendMessage', {
     chat_id: chatId,
@@ -175,7 +185,7 @@ export async function deliverTelegramNotifications(call: TelegramSender = telegr
         where: { id: n.id },
         data: { telegramRetryAt: new Date(Date.now() + seconds * 1000) },
       });
-      if (e instanceof TelegramError && e.code === 429) break;
+      if (e instanceof TelegramError && [0, 401, 429].includes(e.code)) break;
     }
   }
 }

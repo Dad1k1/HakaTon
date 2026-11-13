@@ -187,7 +187,9 @@
     "fileType": "Файл пішімі немесе мазмұны қолдау таппайды.",
     "fileCount": "Әр өтінішке бес тіркемеден артық рұқсат етілмейді.",
     "serverError": "Сұрауды орындау мүмкін болмады. Кейін қайталаңыз.",
-    "telegramUnavailable": "Telegram қолжетімсіз. Кейінірек қайталаңыз."
+    "telegramUnavailable": "Telegram қолжетімсіз. Кейінірек қайталаңыз.",
+    "telegramWorkerUnavailable": "Бот командаларды қабылдамайды. Баптаулардан Telegram күйін тексеріп, telegram қызметін іске қосыңыз.",
+    "telegramNotConnected": "Алдымен Telegram қосыңыз."
   },
   "awaitingResponse": "Жауап күтуде",
   "awaitingResponseHint": "Алғашқы мазмұнды жауапсыз",
@@ -286,6 +288,15 @@
   "telegramConnect": "Telegram қосу",
   "telegramDisconnect": "Telegram өшіру",
   "telegramOpen": "Ботты ашу",
-  "telegramStart": "Telegram ішінде «Бастау» басыңыз. Сілтеме 10 минут жарамды және бір рет қолданылады.",
-  "telegramDisabled": "Әкімші серверде TELEGRAM_BOT_TOKEN орнатуы керек."
+  "telegramStart": "Telegram ішінде «Бастау» басыңыз. Чат ашық болса, төмендегі толық команданы жіберіңіз. Сілтеме 10 минут жарамды және бір рет қолданылады.",
+  "telegramDisabled": "Әкімші серверде TELEGRAM_BOT_TOKEN орнатуы керек.",
+  "telegramWorkerReady": "Бот жұмыс істеп, командаларды қабылдап жатыр.",
+  "telegramWorkerOffline": "Telegram қызметі іске қосылмаған. Серверде орындаңыз: docker compose up -d --build app telegram",
+  "telegramTokenRejected": "Telegram бот токенін қабылдамады. .env ішіндегі TELEGRAM_BOT_TOKEN мәнін тексеріп, telegram қызметін қайта жасаңыз.",
+  "telegramPollingConflict": "Бұл ботты басқа процесс немесе webhook пайдаланып жатыр. Екінші процесті тоқтатыңыз немесе бөлек бот қолданыңыз.",
+  "telegramWorkerError": "Telegram уақытша қолжетімсіз. Интернет пен журналды тексеріңіз: docker compose logs --tail=50 telegram",
+  "telegramManualCommand": "Қолмен көшіруге арналған байланыстыру командасы",
+  "telegramManualHint": "Команданы толық көшіріп, ботқа жіберіңіз. Кодсыз /start профильді байланыстырмайды.",
+  "telegramTest": "Жеткізуді тексеру",
+  "telegramTestSent": "Telegram-ға сынақ хабарландыруы жіберілді."
 }

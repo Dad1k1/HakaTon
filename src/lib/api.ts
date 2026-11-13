@@ -8,7 +8,8 @@ import path from 'node:path';
 import { fileTypeFromBuffer } from 'file-type';
 import { isIPv4 } from 'node:net';
 import { db } from './db';
-import { createTelegramLink } from './telegram';
+import { createTelegramLink, telegramCall, TelegramError } from './telegram';
+import { getTelegramWorkerStatus } from './telegram-status';
 import { authOptions } from './auth';
 import {
   visibility,
@@ -208,7 +209,11 @@ async function get(u: User, p: string[], q: URLSearchParams) {
   if (p[0] === 'me') return publicUser(u);
   if (p[0] === 'telegram') {
     const connection = await db.telegramConnection.findUnique({ where: { userId: u.id } });
-    return { enabled: !!process.env.TELEGRAM_BOT_TOKEN, connected: !!connection?.chatId };
+    return {
+      enabled: !!process.env.TELEGRAM_BOT_TOKEN,
+      connected: !!connection?.chatId,
+      worker: await getTelegramWorkerStatus(),
+    };
   }
   if (p[0] === 'lookups')
     return {
@@ -369,11 +374,36 @@ async function get(u: User, p: string[], q: URLSearchParams) {
 async function post(u: User, p: string[], body: unknown) {
   if (p[0] === 'telegram') {
     const b = z
-      .object({ action: z.enum(['connect', 'disconnect']) })
+      .object({ action: z.enum(['connect', 'disconnect', 'test']) })
       .strict()
       .parse(body);
     if (b.action === 'disconnect') {
       await db.telegramConnection.deleteMany({ where: { userId: u.id } });
+      return { ok: true };
+    }
+    if (!(await getTelegramWorkerStatus()).ready) fail(503, 'telegramWorkerUnavailable');
+    if (b.action === 'test') {
+      const connection = await db.telegramConnection.findUnique({ where: { userId: u.id } });
+      if (!connection?.chatId) fail(400, 'telegramNotConnected');
+      try {
+        await telegramCall('sendMessage', {
+          chat_id: connection.chatId,
+          text:
+            (
+              {
+                ru: 'Проверка связи: уведомления «Модус Трейд» работают.',
+                en: 'Connection test: Modus Trade notifications are working.',
+                kk: 'Байланысты тексеру: «Модус Трейд» хабарландырулары жұмыс істейді.',
+              } as Record<string, string>
+            )[u.locale] || 'Modus Trade: connection test.',
+        });
+      } catch (e) {
+        if (e instanceof TelegramError && e.code === 403)
+          await db.telegramConnection.deleteMany({
+            where: { userId: u.id, chatId: connection.chatId },
+          });
+        fail(503, 'telegramUnavailable');
+      }
       return { ok: true };
     }
     try {
